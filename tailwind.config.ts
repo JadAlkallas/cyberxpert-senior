@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,6 +62,14 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				// CyberXpert custom colors
+				cyber: {
+					orange: '#F97316',
+					black: '#000000',
+					"dark-gray": '#222222',
+					"medium-gray": '#8A898C',
+					"light-gray": '#F1F1F1',
 				}
 			},
 			borderRadius: {
@@ -84,11 +93,48 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'pulse-glow': {
+					'0%, 100%': {
+						opacity: '1',
+						boxShadow: '0 0 20px rgba(249, 115, 22, 0.4)'
+					},
+					'50%': {
+						opacity: '0.8',
+						boxShadow: '0 0 40px rgba(249, 115, 22, 0.7)'
+					}
+				},
+				'scale-up': {
+					'0%': { transform: 'scale(0.95)', opacity: '0' },
+					'100%': { transform: 'scale(1)', opacity: '1' }
+				},
+				'fade-in': {
+					'0%': { opacity: '0' },
+					'100%': { opacity: '1' }
+				},
+				'rotate-bg': {
+					'0%': { backgroundPosition: '0% 50%' },
+					'50%': { backgroundPosition: '100% 50%' },
+					'100%': { backgroundPosition: '0% 50%' }
+				},
+				'spin-slow': {
+					'0%': { transform: 'rotate(0deg)' },
+					'100%': { transform: 'rotate(360deg)' }
+				},
+				'cyber-loading': {
+					'0%, 100%': { boxShadow: '0 0 0 2px rgba(249, 115, 22, 0.3)' },
+					'50%': { boxShadow: '0 0 0 15px rgba(249, 115, 22, 0.1)' }
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'pulse-glow': 'pulse-glow 2s ease-in-out infinite',
+				'scale-up': 'scale-up 0.3s ease-out',
+				'fade-in': 'fade-in 0.3s ease-out',
+				'rotate-bg': 'rotate-bg 15s ease infinite',
+				'spin-slow': 'spin-slow 10s linear infinite',
+				'cyber-loading': 'cyber-loading 1.5s ease infinite'
 			}
 		}
 	},
