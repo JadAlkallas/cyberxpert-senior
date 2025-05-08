@@ -1,13 +1,10 @@
-
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
-
 const Landing = () => {
-  return (
-    <div className="min-h-screen flex flex-col">
+  return <div className="min-h-screen flex flex-col">
       <Header />
       
       <main className="flex-1">
@@ -31,7 +28,7 @@ const Landing = () => {
                     </Button>
                   </Link>
                   <Link to="/login">
-                    <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10">
+                    <Button size="lg" variant="outline" className="border-white hover:bg-white/10 text-zinc-500">
                       Log In
                     </Button>
                   </Link>
@@ -41,11 +38,7 @@ const Landing = () => {
               <div className="hidden lg:block relative">
                 <div className="relative rounded-md overflow-hidden shadow-xl">
                   <div className="absolute inset-0 bg-gradient-to-tr from-black/40 to-transparent z-10"></div>
-                  <img 
-                    src="https://images.unsplash.com/photo-1518770660439-4636190af475" 
-                    alt="Cyber Security" 
-                    className="w-full h-full object-cover" 
-                  />
+                  <img src="https://images.unsplash.com/photo-1518770660439-4636190af475" alt="Cyber Security" className="w-full h-full object-cover" />
                 </div>
                 <div className="absolute top-0 right-0 -mr-6 -mt-6 bg-cyber-orange rounded-full w-20 h-20 flex items-center justify-center font-bold text-white animate-pulse-glow">
                   New
@@ -119,8 +112,6 @@ const Landing = () => {
       </main>
       
       <Footer />
-    </div>
-  );
+    </div>;
 };
-
 export default Landing;
