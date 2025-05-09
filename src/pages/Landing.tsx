@@ -1,9 +1,14 @@
+
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
+import { useAuth } from "@/context/AuthContext";
+
 const Landing = () => {
+  const { isAuthenticated } = useAuth();
+  
   return <div className="min-h-screen flex flex-col">
       <Header />
       
@@ -21,17 +26,28 @@ const Landing = () => {
                   Identify vulnerabilities before they become threats.
                 </p>
                 <div className="pt-4 flex flex-col sm:flex-row gap-4">
-                  <Link to="/signup">
-                    <Button size="lg" className="bg-cyber-orange hover:bg-cyber-orange/90">
-                      Start Securing Your App
-                      <ArrowRight className="ml-2 h-5 w-5" />
-                    </Button>
-                  </Link>
-                  <Link to="/login">
-                    <Button size="lg" variant="outline" className="border-white hover:bg-white/10 text-zinc-500">
-                      Log In
-                    </Button>
-                  </Link>
+                  {!isAuthenticated ? (
+                    <>
+                      <Link to="/signup">
+                        <Button size="lg" className="bg-cyber-orange hover:bg-cyber-orange/90">
+                          Start Securing Your App
+                          <ArrowRight className="ml-2 h-5 w-5" />
+                        </Button>
+                      </Link>
+                      <Link to="/login">
+                        <Button size="lg" variant="outline" className="border-white hover:bg-white/10 text-white">
+                          Log In
+                        </Button>
+                      </Link>
+                    </>
+                  ) : (
+                    <Link to="/home">
+                      <Button size="lg" className="bg-cyber-orange hover:bg-cyber-orange/90">
+                        Go to Dashboard
+                        <ArrowRight className="ml-2 h-5 w-5" />
+                      </Button>
+                    </Link>
+                  )}
                 </div>
               </div>
               
@@ -102,11 +118,19 @@ const Landing = () => {
             <p className="text-lg text-gray-600 mb-8">
               Join thousands of developers and security teams who trust CyberXpert for their security needs.
             </p>
-            <Link to="/signup">
-              <Button size="lg" className="bg-cyber-orange hover:bg-cyber-orange/90">
-                Get Started Now
-              </Button>
-            </Link>
+            {!isAuthenticated ? (
+              <Link to="/signup">
+                <Button size="lg" className="bg-cyber-orange hover:bg-cyber-orange/90">
+                  Get Started Now
+                </Button>
+              </Link>
+            ) : (
+              <Link to="/home">
+                <Button size="lg" className="bg-cyber-orange hover:bg-cyber-orange/90">
+                  Go to Dashboard
+                </Button>
+              </Link>
+            )}
           </div>
         </section>
       </main>
