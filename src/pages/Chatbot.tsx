@@ -1,9 +1,11 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "@/components/ui/sonner";
 import { Send, History, MessageSquare, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import Header from "@/components/layout/Header";
 import Sidebar from "@/components/layout/Sidebar";
 
@@ -95,6 +97,7 @@ const Chatbot = () => {
       localStorage.setItem("cyberxpert-conversations", JSON.stringify(allConversations));
     }
   }, [pastConversations, user]);
+
   const startNewConversation = () => {
     const newConversation: Conversation = {
       id: Date.now().toString(),
@@ -107,6 +110,7 @@ const Chatbot = () => {
     setShowConversationHistory(false);
     toast.success("New conversation started");
   };
+
   const endCurrentConversation = () => {
     if (currentConversation) {
       const endedConversation = {
@@ -125,11 +129,23 @@ const Chatbot = () => {
       toast.success("Conversation ended and saved");
     }
   };
+
   const loadConversation = (conversation: Conversation) => {
-    setCurrentConversation(conversation);
+    // If the conversation was previously ended, reactivate it by setting endedAt to null
+    const reactivatedConversation = {
+      ...conversation,
+      endedAt: null
+    };
+    
+    // Update past conversations list to remove this conversation (since it's now active)
+    setPastConversations(prev => prev.filter(conv => conv.id !== conversation.id));
+    
+    // Set as current conversation
+    setCurrentConversation(reactivatedConversation);
     setShowConversationHistory(false);
-    toast.success("Conversation loaded");
+    toast.success("Conversation reopened");
   };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim()) return;
@@ -185,6 +201,7 @@ const Chatbot = () => {
       setIsLoading(false);
     }
   };
+  
   const formatDate = (date: Date): string => {
     return new Date(date).toLocaleString(undefined, {
       hour: '2-digit',
@@ -193,6 +210,7 @@ const Chatbot = () => {
       day: 'numeric'
     });
   };
+  
   return <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
       <div className="flex flex-col flex-1">
@@ -221,7 +239,8 @@ const Chatbot = () => {
               </div>
             </div>
             
-            {showConversationHistory ? <div className="p-4 h-[400px] overflow-y-auto bg-gray-50">
+            {showConversationHistory ? (
+              <ScrollArea className="p-4 h-[400px] bg-gray-50">
                 <h2 className="text-lg font-semibold mb-4">Conversation History</h2>
                 {pastConversations.length === 0 ? <div className="flex flex-col items-center justify-center h-64 text-gray-500">
                     <History className="h-12 w-12 mb-2" />
@@ -235,7 +254,9 @@ const Chatbot = () => {
                         </div>
                       </div>)}
                   </div>}
-              </div> : <div className="p-4 h-[400px] overflow-y-auto bg-gray-50">
+              </ScrollArea>
+            ) : (
+              <ScrollArea className="p-4 h-[400px] bg-gray-50">
                 {!currentConversation ? <div className="flex flex-col items-center justify-center h-full text-gray-500">
                     <MessageSquare className="h-12 w-12 mb-2" />
                     <p>Start a new conversation!</p>
@@ -255,7 +276,8 @@ const Chatbot = () => {
                           </div>
                         </div>)}
                   </div>}
-              </div>}
+              </ScrollArea>
+            )}
             
             {/* Message input */}
             <form onSubmit={handleSubmit} className="p-4 border-t border-gray-200">
