@@ -4,7 +4,7 @@ import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Home, User, Book, PieChart, ChevronLeft, ChevronRight } from "lucide-react";
+import { Home, User, Book, PieChart, ChevronLeft, ChevronRight, MessageSquare } from "lucide-react";
 
 const Sidebar = () => {
   const { user } = useAuth();
@@ -19,6 +19,7 @@ const Sidebar = () => {
     { name: "Account", path: "/account", icon: <User className="h-5 w-5" /> },
     { name: "Repository", path: "/repository", icon: <Book className="h-5 w-5" /> },
     { name: "Reports", path: "/reports", icon: <PieChart className="h-5 w-5" /> },
+    { name: "Chatbot", path: "/chatbot", icon: <MessageSquare className="h-5 w-5" /> },
   ];
   
   return (

@@ -16,6 +16,7 @@ import Home from "./pages/Home";
 import Account from "./pages/Account";
 import Repository from "./pages/Repository";
 import Reports from "./pages/Reports";
+import Chatbot from "./pages/Chatbot";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -51,6 +52,7 @@ const App = () => (
               <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
               <Route path="/repository" element={<ProtectedRoute><Repository /></ProtectedRoute>} />
               <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+              <Route path="/chatbot" element={<ProtectedRoute><Chatbot /></ProtectedRoute>} />
               
               <Route path="*" element={<NotFound />} />
             </Routes>
