@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "@/components/ui/sonner";
@@ -32,6 +31,7 @@ const Chatbot = () => {
   const [pastConversations, setPastConversations] = useState<Conversation[]>([]);
   const [showConversationHistory, setShowConversationHistory] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [viewedConversation, setViewedConversation] = useState<Conversation | null>(null);
 
   // Load chat history from localStorage on component mount
   useEffect(() => {
@@ -107,6 +107,7 @@ const Chatbot = () => {
       endedAt: null
     };
     setCurrentConversation(newConversation);
+    setViewedConversation(null);
     setShowConversationHistory(false);
     toast.success("New conversation started");
   };
@@ -127,10 +128,29 @@ const Chatbot = () => {
       // Remove active conversation from localStorage
       localStorage.removeItem("cyberxpert-active-conversation");
       toast.success("Conversation ended and saved");
+      
+      // If we're viewing a conversation, keep showing it
+      if (viewedConversation) {
+        setShowConversationHistory(false);
+      }
     }
   };
 
+  const viewConversation = (conversation: Conversation) => {
+    setViewedConversation(conversation);
+    setShowConversationHistory(false);
+  };
+
   const loadConversation = (conversation: Conversation) => {
+    if (currentConversation && currentConversation.messages.length > 0) {
+      toast.error("Please end your current conversation before starting another one");
+      // Show the conversation as viewed only
+      setViewedConversation(conversation);
+      setShowConversationHistory(false);
+      return;
+    }
+    
+    // If no active conversation or it's empty, activate this one
     // If the conversation was previously ended, reactivate it by setting endedAt to null
     const reactivatedConversation = {
       ...conversation,
@@ -142,6 +162,7 @@ const Chatbot = () => {
     
     // Set as current conversation
     setCurrentConversation(reactivatedConversation);
+    setViewedConversation(null);
     setShowConversationHistory(false);
     toast.success("Conversation reopened");
   };
@@ -211,6 +232,11 @@ const Chatbot = () => {
     });
   };
   
+  const backToConversations = () => {
+    setViewedConversation(null);
+    setShowConversationHistory(true);
+  };
+  
   return <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
       <div className="flex flex-col flex-1">
@@ -246,7 +272,7 @@ const Chatbot = () => {
                     <History className="h-12 w-12 mb-2" />
                     <p>No past conversations yet</p>
                   </div> : <div className="space-y-2">
-                    {pastConversations.map(conv => <div key={conv.id} onClick={() => loadConversation(conv)} className="p-3 border border-gray-200 rounded-md bg-white hover:bg-gray-100 cursor-pointer">
+                    {pastConversations.map(conv => <div key={conv.id} onClick={() => viewConversation(conv)} className="p-3 border border-gray-200 rounded-md bg-white hover:bg-gray-100 cursor-pointer">
                         <div className="font-medium">{conv.title}</div>
                         <div className="text-sm text-gray-500 flex justify-between">
                           <span>{formatDate(conv.createdAt)}</span>
@@ -255,6 +281,37 @@ const Chatbot = () => {
                       </div>)}
                   </div>}
               </ScrollArea>
+            ) : viewedConversation ? (
+              <div className="h-[400px] flex flex-col">
+                <div className="p-3 bg-gray-100 border-b border-gray-200 flex items-center justify-between">
+                  <div>
+                    <h2 className="font-medium">{viewedConversation.title} (View only)</h2>
+                    <p className="text-sm text-gray-500">Created on {formatDate(viewedConversation.createdAt)}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={backToConversations}>
+                      <History className="h-4 w-4 mr-2" />
+                      Back to History
+                    </Button>
+                    <Button size="sm" onClick={() => loadConversation(viewedConversation)}>
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Resume Chat
+                    </Button>
+                  </div>
+                </div>
+                <ScrollArea className="p-4 flex-1 bg-gray-50">
+                  <div className="space-y-4">
+                    {viewedConversation.messages.map(chat => <div key={chat.id} className={`flex ${chat.sender === "user" ? "justify-end" : "justify-start"}`}>
+                        <div className={`rounded-lg p-3 max-w-[80%] ${chat.sender === "user" ? "bg-cyber-orange text-white" : "bg-white border border-gray-200"}`}>
+                          <div className="whitespace-pre-wrap">{chat.content}</div>
+                          <div className={`text-xs mt-1 ${chat.sender === "user" ? "text-gray-200" : "text-gray-500"}`}>
+                            {formatDate(chat.timestamp)}
+                          </div>
+                        </div>
+                      </div>)}
+                  </div>
+                </ScrollArea>
+              </div>
             ) : (
               <ScrollArea className="p-4 h-[400px] bg-gray-50">
                 {!currentConversation ? <div className="flex flex-col items-center justify-center h-full text-gray-500">
@@ -282,8 +339,18 @@ const Chatbot = () => {
             {/* Message input */}
             <form onSubmit={handleSubmit} className="p-4 border-t border-gray-200">
               <div className="flex space-x-2">
-                <Textarea value={message} onChange={e => setMessage(e.target.value)} placeholder="Type your message here..." className="flex-1 min-h-[80px]" disabled={isLoading || !currentConversation} />
-                <Button type="submit" className="self-end bg-cyber-orange hover:bg-cyber-orange/90" disabled={isLoading || !currentConversation || !message.trim()}>
+                <Textarea 
+                  value={message} 
+                  onChange={e => setMessage(e.target.value)} 
+                  placeholder={viewedConversation ? "End current chat to resume this conversation..." : "Type your message here..."} 
+                  className="flex-1 min-h-[80px]" 
+                  disabled={isLoading || !currentConversation || viewedConversation !== null} 
+                />
+                <Button 
+                  type="submit" 
+                  className="self-end bg-cyber-orange hover:bg-cyber-orange/90" 
+                  disabled={isLoading || !currentConversation || !message.trim() || viewedConversation !== null}
+                >
                   <Send className="h-5 w-5" />
                   <span className="ml-2">Send</span>
                 </Button>
