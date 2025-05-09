@@ -210,7 +210,7 @@ const Chatbot = () => {
                   <History className="h-5 w-5" />
                   <span className="ml-2">{showConversationHistory ? "Hide History" : "Show History"}</span>
                 </Button>
-                <Button variant="outline" size="sm" onClick={startNewConversation} className="border-white hover:bg-gray-700 text-gray-400">
+                <Button variant="outline" size="sm" onClick={startNewConversation} className="border-white bg-cyber-orange text-[cyber-dark-gray] text-cyber-black">
                   <MessageSquare className="h-5 w-5" />
                   <span className="ml-2">New Chat</span>
                 </Button>
