@@ -21,6 +21,7 @@ export interface ReportItem {
   id: string;
   date: string;
   time: string;
+  read: boolean; // Added the read property
   securityPosture: {
     score: number;
     criticalIssues: number;
@@ -109,6 +110,7 @@ const initialReports: ReportItem[] = [
     id: "report-001",
     date: "2025-05-01",
     time: "09:34 AM",
+    read: false, // Added read property to existing reports
     securityPosture: {
       score: 78,
       criticalIssues: 1,
@@ -122,6 +124,7 @@ const initialReports: ReportItem[] = [
     id: "report-002",
     date: "2025-05-02",
     time: "02:18 PM",
+    read: false, // Added read property to existing reports
     securityPosture: {
       score: 85,
       criticalIssues: 0,
@@ -257,6 +260,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         id: reportId,
         date,
         time,
+        read: false, // Set new report as unread
         securityPosture: generateSecurityPosture()
       };
       
