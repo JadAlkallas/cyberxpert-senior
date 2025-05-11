@@ -10,6 +10,7 @@ import CircleProgressChart from "@/components/dashboard/CircleProgressChart";
 import { Link } from "react-router-dom";
 import { LoadingSpinner, LoadingOverlay } from "@/components/ui/loading-spinner";
 import { SkeletonCard } from "@/components/ui/skeleton-card";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const Home = () => {
   const { user } = useAuth();
