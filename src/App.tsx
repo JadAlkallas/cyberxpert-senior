@@ -17,6 +17,7 @@ import Account from "./pages/Account";
 import Repository from "./pages/Repository";
 import Reports from "./pages/Reports";
 import Chatbot from "./pages/Chatbot";
+import AdminUsers from "./pages/AdminUsers";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,19 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   
   if (!isAuthenticated) {
     return <Navigate to="/login" />;
+  }
+  
+  return <>{children}</>;
+};
+
+// Admin route wrapper
+const AdminRoute = ({ children }: { children: React.ReactNode }) => {
+  // Check for authentication and role
+  const userData = localStorage.getItem("cyberxpert-user");
+  const isAdmin = userData ? JSON.parse(userData).role === "Admin" : false;
+  
+  if (!isAdmin) {
+    return <Navigate to="/home" />;
   }
   
   return <>{children}</>;
@@ -53,6 +67,9 @@ const App = () => (
               <Route path="/repository" element={<ProtectedRoute><Repository /></ProtectedRoute>} />
               <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
               <Route path="/chatbot" element={<ProtectedRoute><Chatbot /></ProtectedRoute>} />
+              
+              {/* Admin routes */}
+              <Route path="/admin/users" element={<ProtectedRoute><AdminRoute><AdminUsers /></AdminRoute></ProtectedRoute>} />
               
               <Route path="*" element={<NotFound />} />
             </Routes>

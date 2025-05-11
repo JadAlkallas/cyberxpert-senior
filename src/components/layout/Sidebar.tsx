@@ -4,7 +4,7 @@ import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Home, User, Book, PieChart, ChevronLeft, ChevronRight, MessageSquare } from "lucide-react";
+import { Home, User, Book, PieChart, ChevronLeft, ChevronRight, MessageSquare, Users } from "lucide-react";
 
 const Sidebar = () => {
   const { user } = useAuth();
@@ -21,6 +21,15 @@ const Sidebar = () => {
     { name: "Reports", path: "/reports", icon: <PieChart className="h-5 w-5" /> },
     { name: "Chatbot", path: "/chatbot", icon: <MessageSquare className="h-5 w-5" /> },
   ];
+  
+  // Add admin-only menu items
+  if (user.role === "Admin") {
+    menuItems.push({ 
+      name: "User Management", 
+      path: "/admin/users", 
+      icon: <Users className="h-5 w-5" /> 
+    });
+  }
   
   return (
     <div
