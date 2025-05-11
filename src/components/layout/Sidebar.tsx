@@ -3,22 +3,37 @@ import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
+import { useData } from "@/context/DataContext";
 import { Button } from "@/components/ui/button";
 import { Home, User, Book, PieChart, ChevronLeft, ChevronRight, MessageSquare, Users } from "lucide-react";
 
 const Sidebar = () => {
   const { user } = useAuth();
+  const { reports } = useData();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   
   // Only show sidebar for authenticated users
   if (!user) return null;
   
+  // Get pending users count for notification badge
+  const pendingUsersCount = user.role === "Admin" ? 
+    JSON.parse(localStorage.getItem("cyberxpert-pending-users") || "[]").length : 0;
+  
+  // Get unread reports count
+  const unreadReportsCount = user.role === "Admin" ? 
+    reports.filter(report => !report.read).length : 0;
+  
   const menuItems = [
     { name: "Home", path: "/home", icon: <Home className="h-5 w-5" /> },
     { name: "Account", path: "/account", icon: <User className="h-5 w-5" /> },
     { name: "Repository", path: "/repository", icon: <Book className="h-5 w-5" /> },
-    { name: "Reports", path: "/reports", icon: <PieChart className="h-5 w-5" /> },
+    { 
+      name: "Reports", 
+      path: "/reports", 
+      icon: <PieChart className="h-5 w-5" />,
+      badge: user.role === "Admin" && unreadReportsCount > 0 ? unreadReportsCount : null 
+    },
     { name: "Chatbot", path: "/chatbot", icon: <MessageSquare className="h-5 w-5" /> },
   ];
   
@@ -27,7 +42,8 @@ const Sidebar = () => {
     menuItems.push({ 
       name: "User Management", 
       path: "/admin/users", 
-      icon: <Users className="h-5 w-5" /> 
+      icon: <Users className="h-5 w-5" />,
+      badge: pendingUsersCount > 0 ? pendingUsersCount : null
     });
   }
   
@@ -44,7 +60,7 @@ const Sidebar = () => {
             <Link key={item.path} to={item.path}>
               <div
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors",
+                  "flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors relative",
                   location.pathname === item.path
                     ? "bg-cyber-orange text-white"
                     : "text-gray-300 hover:bg-gray-800"
@@ -52,6 +68,16 @@ const Sidebar = () => {
               >
                 <div>{item.icon}</div>
                 {!collapsed && <span>{item.name}</span>}
+                
+                {/* Notification badge */}
+                {item.badge && (
+                  <div className={cn(
+                    "absolute flex items-center justify-center rounded-full bg-red-500 text-white font-medium text-xs min-w-5 h-5 p-1",
+                    collapsed ? "right-0 top-0 -mt-1 -mr-1" : "right-3"
+                  )}>
+                    {item.badge}
+                  </div>
+                )}
               </div>
             </Link>
           ))}

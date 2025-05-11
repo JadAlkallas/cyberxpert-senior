@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Header from "@/components/layout/Header";
 import Sidebar from "@/components/layout/Sidebar";
 import { useAuth } from "@/context/AuthContext";
@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Check, Shield, X, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 const AdminUsers = () => {
   const { user, pendingUsers, approvePendingUser, rejectPendingUser } = useAuth();
@@ -50,6 +51,17 @@ const AdminUsers = () => {
               <h1 className="text-3xl font-bold mb-2">User Management</h1>
               <p className="text-gray-600">Manage pending account requests and user permissions</p>
             </div>
+            
+            {pendingUsers.length > 0 && (
+              <Alert className="mb-6 border-cyber-orange bg-cyber-orange/10">
+                <AlertTitle className="text-cyber-orange font-medium">
+                  Pending Approval Requests
+                </AlertTitle>
+                <AlertDescription>
+                  You have {pendingUsers.length} developer account{pendingUsers.length === 1 ? '' : 's'} waiting for approval.
+                </AlertDescription>
+              </Alert>
+            )}
             
             <Card className="mb-8">
               <CardHeader>
