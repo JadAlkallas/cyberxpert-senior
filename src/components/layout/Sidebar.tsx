@@ -50,7 +50,7 @@ const Sidebar = () => {
   return (
     <div
       className={cn(
-        "h-[calc(100vh-4rem)] bg-cyber-dark-gray text-white border-r border-gray-800 transition-all duration-300 flex flex-col",
+        "h-screen bg-cyber-dark-gray text-white border-r border-gray-800 transition-all duration-300 flex flex-col",
         collapsed ? "w-16" : "w-64"
       )}
     >

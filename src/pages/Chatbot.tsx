@@ -237,12 +237,13 @@ const Chatbot = () => {
     setShowConversationHistory(true);
   };
   
-  return <div className="flex min-h-screen bg-gray-50">
+  return (
+    <div className="flex h-screen bg-gray-50">
       <Sidebar />
-      <div className="flex flex-col flex-1">
+      <div className="flex flex-col flex-1 overflow-hidden">
         <Header />
         
-        <main className="flex-1 container max-w-5xl mx-auto px-4 py-8">
+        <main className="flex-1 container max-w-5xl mx-auto px-4 py-8 overflow-y-auto">
           <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200">
             <div className="p-4 border-b border-gray-200 bg-cyber-dark-gray text-white flex justify-between items-center">
               <div>
@@ -359,6 +360,7 @@ const Chatbot = () => {
           </div>
         </main>
       </div>
-    </div>;
+    </div>
+  );
 };
 export default Chatbot;
