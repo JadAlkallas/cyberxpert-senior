@@ -52,14 +52,15 @@ const Header = () => {
                       {user.role}
                     </span>
                   </div>
-                  
-                  {isSuspended && (
-                    <Alert variant="destructive" className="py-1 px-2 bg-red-50 border-red-200 flex items-center h-auto">
-                      <AlertTriangle className="h-3 w-3 text-red-500 mr-1" />
-                      <AlertDescription className="text-xs text-red-500 m-0">Suspended</AlertDescription>
-                    </Alert>
-                  )}
                 </div>
+                
+                {isSuspended && (
+                  <Alert variant="destructive" className="py-1 px-2 mb-0 h-6 bg-red-50 border-red-200 flex items-center">
+                    <AlertTriangle className="h-3 w-3 text-red-500 mr-1" />
+                    <AlertDescription className="text-xs text-red-500 m-0">Suspended</AlertDescription>
+                  </Alert>
+                )}
+                
                 <Button
                   variant="ghost"
                   size="icon"
