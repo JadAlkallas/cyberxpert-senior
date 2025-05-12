@@ -3,11 +3,14 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
-import { User, LogOut, Menu, X } from "lucide-react";
+import { User, LogOut, Menu, X, AlertTriangle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const Header = () => {
   const { isAuthenticated, user, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  
+  const isSuspended = user?.status === "suspended";
   
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
@@ -24,7 +27,7 @@ const Header = () => {
 
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center gap-6">
-          {isAuthenticated ? (
+          {user ? (
             <>
               <nav className="flex items-center gap-4">
                 <Link to="/home" className="text-gray-700 hover:text-cyber-orange transition-colors">
@@ -42,11 +45,20 @@ const Header = () => {
               </nav>
               
               <div className="flex items-center gap-3">
-                <div className="text-sm text-gray-600">
-                  <span className="font-semibold">{user?.username}</span>
-                  <span className="ml-1 text-xs bg-gray-200 px-2 py-0.5 rounded">
-                    {user?.role}
-                  </span>
+                <div className="flex items-center gap-2">
+                  <div className="text-sm text-gray-600">
+                    <span className="font-semibold">{user.username}</span>
+                    <span className="ml-1 text-xs bg-gray-200 px-2 py-0.5 rounded">
+                      {user.role}
+                    </span>
+                  </div>
+                  
+                  {isSuspended && (
+                    <Alert variant="destructive" className="py-1 px-2 bg-red-50 border-red-200 flex items-center h-auto">
+                      <AlertTriangle className="h-3 w-3 text-red-500 mr-1" />
+                      <AlertDescription className="text-xs text-red-500 m-0">Suspended</AlertDescription>
+                    </Alert>
+                  )}
                 </div>
                 <Button
                   variant="ghost"
@@ -90,15 +102,23 @@ const Header = () => {
       {mobileMenuOpen && (
         <div className="md:hidden bg-white border-t border-gray-100 animate-scale-up">
           <div className="container px-4 py-3">
-            {isAuthenticated ? (
+            {user ? (
               <>
                 <div className="flex items-center gap-3 py-3 border-b border-gray-100">
                   <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
                     <User className="h-4 w-4" />
                   </div>
-                  <div>
-                    <div className="font-medium">{user?.username}</div>
-                    <div className="text-xs text-gray-500">{user?.role}</div>
+                  <div className="flex-1">
+                    <div className="font-medium flex items-center gap-2">
+                      {user.username}
+                      {isSuspended && (
+                        <span className="text-xs px-1.5 py-0.5 bg-red-100 text-red-500 rounded flex items-center">
+                          <AlertTriangle className="h-3 w-3 mr-1" />
+                          Suspended
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-gray-500">{user.role}</div>
                   </div>
                 </div>
                 
