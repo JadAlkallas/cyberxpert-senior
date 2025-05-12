@@ -13,9 +13,9 @@ const Signup = () => {
       <main className="flex-1 flex items-center justify-center py-12 px-4 bg-gray-50">
         <Card className="w-full max-w-md">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-bold text-center">Create an account</CardTitle>
+            <CardTitle className="text-2xl font-bold text-center">Create an Admin account</CardTitle>
             <CardDescription className="text-center">
-              Enter your details to create your CyberXpert account
+              Enter your details to create your CyberXpert admin account
             </CardDescription>
           </CardHeader>
           <CardContent>

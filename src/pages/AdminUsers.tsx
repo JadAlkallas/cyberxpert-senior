@@ -6,10 +6,9 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Check, Shield, X, User, UserPlus, UserX, UserCheck } from "lucide-react";
+import { Shield, User, UserPlus, UserX, UserCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,7 +18,6 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { toast } from "@/components/ui/sonner";
 
 // Form schema for adding new dev accounts
 const devAccountSchema = z.object({
@@ -37,7 +35,7 @@ const devAccountSchema = z.object({
 type DevAccountFormValues = z.infer<typeof devAccountSchema>;
 
 const AdminUsers = () => {
-  const { user, pendingUsers, allDevs, approvePendingUser, rejectPendingUser, addDevAccount, deleteDevAccount, updateDevStatus } = useAuth();
+  const { user, allDevs, addDevAccount, deleteDevAccount, updateDevStatus } = useAuth();
   const navigate = useNavigate();
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -60,22 +58,6 @@ const AdminUsers = () => {
     return null;
   }
 
-  const handleApprove = async (userId: string) => {
-    setProcessingId(userId);
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    approvePendingUser(userId);
-    setProcessingId(null);
-  };
-
-  const handleReject = async (userId: string) => {
-    setProcessingId(userId);
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    rejectPendingUser(userId);
-    setProcessingId(null);
-  };
-  
   const handleDelete = async (userId: string) => {
     if (confirm("Are you sure you want to delete this user?")) {
       setProcessingId(userId);
@@ -128,14 +110,6 @@ const AdminUsers = () => {
             <Tabs defaultValue="devs" className="mb-8">
               <TabsList className="mb-4">
                 <TabsTrigger value="devs">All Developers</TabsTrigger>
-                <TabsTrigger value="pending">
-                  Pending Approvals
-                  {pendingUsers.length > 0 && (
-                    <span className="ml-2 bg-cyber-orange text-white px-2 py-0.5 rounded-full text-xs">
-                      {pendingUsers.length}
-                    </span>
-                  )}
-                </TabsTrigger>
                 <TabsTrigger value="add">Add Developer</TabsTrigger>
               </TabsList>
               
@@ -225,87 +199,6 @@ const AdminUsers = () => {
                                       <UserX className="h-4 w-4 mr-1" />
                                     )}
                                     Delete
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-              
-              <TabsContent value="pending">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Pending Approvals</CardTitle>
-                    <CardDescription>Developer accounts pending admin approval</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {pendingUsers.length === 0 ? (
-                      <div className="text-center py-8 text-gray-500">
-                        No pending user approvals
-                      </div>
-                    ) : (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Username</TableHead>
-                            <TableHead>Email</TableHead>
-                            <TableHead>Role</TableHead>
-                            <TableHead>Request Date</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {pendingUsers.map((pendingUser) => (
-                            <TableRow key={pendingUser.id}>
-                              <TableCell className="font-medium">{pendingUser.username}</TableCell>
-                              <TableCell>{pendingUser.email}</TableCell>
-                              <TableCell>
-                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                  {pendingUser.role === "Dev" ? (
-                                    <User className="h-3.5 w-3.5 mr-1" />
-                                  ) : (
-                                    <Shield className="h-3.5 w-3.5 mr-1" />
-                                  )}
-                                  {pendingUser.role}
-                                </span>
-                              </TableCell>
-                              <TableCell>
-                                {format(new Date(pendingUser.createdAt), "MMM d, yyyy")}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex justify-end gap-2">
-                                  <Button 
-                                    size="sm" 
-                                    variant="outline" 
-                                    className="h-8 border-green-500 text-green-600 hover:bg-green-50"
-                                    onClick={() => handleApprove(pendingUser.id)}
-                                    disabled={processingId === pendingUser.id}
-                                  >
-                                    {processingId === pendingUser.id ? (
-                                      <LoadingSpinner size="sm" className="mr-1" />
-                                    ) : (
-                                      <Check className="h-4 w-4 mr-1" />
-                                    )}
-                                    Approve
-                                  </Button>
-                                  <Button 
-                                    size="sm" 
-                                    variant="outline" 
-                                    className="h-8 border-red-500 text-red-600 hover:bg-red-50"
-                                    onClick={() => handleReject(pendingUser.id)}
-                                    disabled={processingId === pendingUser.id}
-                                  >
-                                    {processingId === pendingUser.id ? (
-                                      <LoadingSpinner size="sm" className="mr-1" />
-                                    ) : (
-                                      <X className="h-4 w-4 mr-1" />
-                                    )}
-                                    Reject
                                   </Button>
                                 </div>
                               </TableCell>

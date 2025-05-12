@@ -4,19 +4,15 @@ import { useNavigate } from "react-router-dom";
 import { useAuth, UserRole } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const SignupForm = () => {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [role, setRole] = useState<UserRole>("Dev");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
   
   const { signup } = useAuth();
   const navigate = useNavigate();
@@ -56,36 +52,14 @@ const SignupForm = () => {
     setIsSubmitting(true);
     
     try {
-      const success = await signup(username, email, password, role);
+      const success = await signup(username, email, password, "Admin");
       if (success) {
-        if (role === "Admin") {
-          navigate("/action");
-        } else {
-          setIsSuccess(true);
-        }
+        navigate("/action");
       }
     } finally {
       setIsSubmitting(false);
     }
   };
-  
-  if (isSuccess && role === "Dev") {
-    return (
-      <div className="text-center py-8">
-        <Alert className="bg-green-50 border-green-200">
-          <AlertDescription>
-            Your account registration has been submitted successfully! An administrator will review your request.
-            You will be notified when your account is approved.
-          </AlertDescription>
-        </Alert>
-        <div className="mt-4">
-          <Button onClick={() => navigate("/login")} variant="outline">
-            Back to Login
-          </Button>
-        </div>
-      </div>
-    );
-  }
   
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
@@ -161,30 +135,6 @@ const SignupForm = () => {
         )}
       </div>
       
-      <div className="space-y-2">
-        <label htmlFor="role" className="block text-sm font-medium">
-          Role
-        </label>
-        <Select
-          value={role}
-          onValueChange={(value) => setRole(value as UserRole)}
-          disabled={isSubmitting}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select role" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="Admin">Admin</SelectItem>
-            <SelectItem value="Dev">Dev</SelectItem>
-          </SelectContent>
-        </Select>
-        {role === "Dev" && (
-          <p className="text-xs text-amber-600 mt-1">
-            Dev accounts require admin approval before activation.
-          </p>
-        )}
-      </div>
-      
       <Button type="submit" className="w-full" disabled={isSubmitting}>
         {isSubmitting ? (
           <>
@@ -192,7 +142,7 @@ const SignupForm = () => {
             Creating account...
           </>
         ) : (
-          "Sign up"
+          "Create Admin Account"
         )}
       </Button>
     </form>

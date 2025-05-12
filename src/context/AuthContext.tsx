@@ -4,7 +4,7 @@ import { toast } from "@/components/ui/sonner";
 import { useNavigate } from "react-router-dom";
 
 export type UserRole = "Admin" | "Dev";
-export type UserStatus = "active" | "pending" | "suspended";
+export type UserStatus = "active" | "suspended";
 
 interface User {
   id: string;
@@ -16,26 +16,14 @@ interface User {
   createdAt: string;
 }
 
-interface PendingUser {
-  id: string;
-  username: string;
-  email: string;
-  role: UserRole;
-  createdAt: string;
-}
-
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
-  pendingUsers: PendingUser[];
   allDevs: User[];
   login: (username: string, password: string, role: UserRole) => Promise<boolean>;
   signup: (username: string, email: string, password: string, role: UserRole) => Promise<boolean>;
   logout: () => void;
   updateUserProfile: (updates: Partial<User>) => void;
-  approvePendingUser: (userId: string) => void;
-  rejectPendingUser: (userId: string) => void;
-  getPendingUsers: () => PendingUser[];
   addDevAccount: (username: string, email: string, password: string, role: UserRole, status: UserStatus) => Promise<boolean>;
   deleteDevAccount: (userId: string) => void;
   updateDevStatus: (userId: string, status: UserStatus) => void;
@@ -57,11 +45,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return savedUser ? JSON.parse(savedUser) : null;
   });
   
-  const [pendingUsers, setPendingUsers] = useState<PendingUser[]>(() => {
-    const savedPendingUsers = localStorage.getItem("cyberxpert-pending-users");
-    return savedPendingUsers ? JSON.parse(savedPendingUsers) : [];
-  });
-  
   const [allDevs, setAllDevs] = useState<User[]>(() => {
     const savedDevs = localStorage.getItem("cyberxpert-devs");
     return savedDevs ? JSON.parse(savedDevs) : [];
@@ -72,10 +55,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const isAuthenticated = !!user && (user.status === "active" || user.role === "Admin");
   
   useEffect(() => {
-    localStorage.setItem("cyberxpert-pending-users", JSON.stringify(pendingUsers));
-  }, [pendingUsers]);
-  
-  useEffect(() => {
     localStorage.setItem("cyberxpert-devs", JSON.stringify(allDevs));
   }, [allDevs]);
 
@@ -84,16 +63,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Check if this is a pending user trying to log in
-      const pendingUserIndex = pendingUsers.findIndex(
-        pu => pu.username === username && pu.role === role
-      );
-      
-      if (pendingUserIndex !== -1) {
-        toast.error("Your account is pending approval from an admin");
-        return false;
-      }
       
       // Check if this is a registered dev
       const existingDev = allDevs.find(
@@ -161,7 +130,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return false;
       }
 
-      // If registering as Admin, create active user immediately
+      // Only Admin signup is allowed
       if (role === "Admin") {
         const newUser: User = {
           id: Math.random().toString(36).substring(2, 9),
@@ -178,18 +147,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         toast.success("Admin account created successfully!");
         return true;
       } else {
-        // If Dev, add to pending users
-        const newPendingUser: PendingUser = {
-          id: Math.random().toString(36).substring(2, 9),
-          username,
-          email,
-          role,
-          createdAt: new Date().toISOString()
-        };
-
-        setPendingUsers(prev => [...prev, newPendingUser]);
-        toast.success("Account registration submitted! Waiting for admin approval.");
-        return true;
+        toast.error("Only Admin accounts can be created via signup");
+        return false;
       }
     } catch (error) {
       console.error("Signup error:", error);
@@ -219,45 +178,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       
       toast.success("Profile updated successfully");
-    }
-  };
-  
-  const getPendingUsers = (): PendingUser[] => {
-    return pendingUsers;
-  };
-  
-  const approvePendingUser = (userId: string) => {
-    const pendingUser = pendingUsers.find(pu => pu.id === userId);
-    
-    if (pendingUser) {
-      // Remove from pending users
-      setPendingUsers(prev => prev.filter(pu => pu.id !== userId));
-      
-      // Add to active devs
-      const newDev: User = {
-        id: pendingUser.id,
-        username: pendingUser.username,
-        email: pendingUser.email,
-        role: pendingUser.role,
-        status: "active",
-        createdAt: pendingUser.createdAt,
-        avatarUrl: "/placeholder.svg"
-      };
-      
-      setAllDevs(prev => [...prev, newDev]);
-      toast.success(`Approved user: ${pendingUser.username}`);
-    }
-  };
-  
-  const rejectPendingUser = (userId: string) => {
-    const pendingUser = pendingUsers.find(pu => pu.id === userId);
-    
-    if (pendingUser) {
-      // Remove from pending users
-      setPendingUsers(prev => prev.filter(pu => pu.id !== userId));
-      
-      // In a real app, this would notify the user
-      toast.success(`Rejected user: ${pendingUser.username}`);
     }
   };
   
@@ -340,15 +260,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     <AuthContext.Provider value={{
       user,
       isAuthenticated,
-      pendingUsers,
       allDevs,
       login,
       signup,
       logout,
       updateUserProfile,
-      approvePendingUser,
-      rejectPendingUser,
-      getPendingUsers,
       addDevAccount,
       deleteDevAccount,
       updateDevStatus
