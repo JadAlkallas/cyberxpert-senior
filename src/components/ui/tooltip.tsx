@@ -1,9 +1,13 @@
+
 import * as React from "react"
 import * as TooltipPrimitive from "@radix-ui/react-tooltip"
 
 import { cn } from "@/lib/utils"
 
-const TooltipProvider = TooltipPrimitive.Provider
+// Create a proper component that wraps TooltipProvider
+const TooltipProviderComponent = ({ children }: { children: React.ReactNode }) => {
+  return <TooltipPrimitive.Provider>{children}</TooltipPrimitive.Provider>
+}
 
 const Tooltip = TooltipPrimitive.Root
 
@@ -25,4 +29,7 @@ const TooltipContent = React.forwardRef<
 ))
 TooltipContent.displayName = TooltipPrimitive.Content.displayName
 
-export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider }
+// Re-export the primitive as well for compatibility
+const TooltipProvider = TooltipPrimitive.Provider
+
+export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider, TooltipProviderComponent }
