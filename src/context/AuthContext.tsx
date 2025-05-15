@@ -19,7 +19,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
-  allDevs: User[];
+  allUsers: User[];
   login: (username: string, password: string, role: UserRole) => Promise<boolean>;
   signup: (username: string, email: string, password: string, role: UserRole) => Promise<boolean>;
   logout: () => void;
@@ -45,9 +45,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return savedUser ? JSON.parse(savedUser) : null;
   });
   
-  const [allDevs, setAllDevs] = useState<User[]>(() => {
+  const [allUsers, setAllUsers] = useState<User[]>(() => {
     const savedDevs = localStorage.getItem("cyberxpert-devs");
-    return savedDevs ? JSON.parse(savedDevs) : [];
+    const devUsers = savedDevs ? JSON.parse(savedDevs) : [];
+    
+    // Initialize with admin users if they exist
+    const savedAdmins = localStorage.getItem("cyberxpert-admins");
+    const adminUsers = savedAdmins ? JSON.parse(savedAdmins) : [];
+    
+    return [...devUsers, ...adminUsers];
   });
   
   const navigate = useNavigate();
@@ -55,8 +61,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const isAuthenticated = !!user && (user.status === "active" || user.role === "Admin");
   
   useEffect(() => {
-    localStorage.setItem("cyberxpert-devs", JSON.stringify(allDevs));
-  }, [allDevs]);
+    // Save all devs
+    const devUsers = allUsers.filter(user => user.role === "Dev");
+    localStorage.setItem("cyberxpert-devs", JSON.stringify(devUsers));
+    
+    // Save all admins
+    const adminUsers = allUsers.filter(user => user.role === "Admin");
+    localStorage.setItem("cyberxpert-admins", JSON.stringify(adminUsers));
+  }, [allUsers]);
 
   // Mock login - in a real app this would call an API
   const login = async (username: string, password: string, role: UserRole): Promise<boolean> => {
@@ -64,22 +76,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Check if this is a registered dev
-      const existingDev = allDevs.find(
-        dev => dev.username === username && dev.role === role
+      // Check if this is a registered user
+      const existingUser = allUsers.find(
+        u => u.username === username && u.role === role
       );
       
-      if (existingDev) {
-        if (existingDev.status === "suspended") {
-          setUser(existingDev); // Allow login but with restricted access
-          localStorage.setItem("cyberxpert-user", JSON.stringify(existingDev));
+      if (existingUser) {
+        if (existingUser.status === "suspended") {
+          setUser(existingUser); // Allow login but with restricted access
+          localStorage.setItem("cyberxpert-user", JSON.stringify(existingUser));
           toast.warning("Your account has been suspended. Contact an administrator for assistance.");
           return true;
         }
         
-        // Login as existing dev
-        setUser(existingDev);
-        localStorage.setItem("cyberxpert-user", JSON.stringify(existingDev));
+        // Login as existing user
+        setUser(existingUser);
+        localStorage.setItem("cyberxpert-user", JSON.stringify(existingUser));
         toast.success(`Welcome back, ${username}!`);
         return true;
       }
@@ -90,7 +102,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return false;
       }
 
-      // Create a mock admin user if role is admin
+      // Create a mock admin user if role is admin and doesn't exist yet
       if (role === "Admin") {
         const newUser: User = {
           id: Math.random().toString(36).substring(2, 9),
@@ -103,6 +115,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         };
 
         setUser(newUser);
+        setAllUsers(prev => [...prev, newUser]);
         localStorage.setItem("cyberxpert-user", JSON.stringify(newUser));
         toast.success(`Welcome back, ${username}!`);
         
@@ -143,6 +156,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         };
 
         setUser(newUser);
+        setAllUsers(prev => [...prev, newUser]);
         localStorage.setItem("cyberxpert-user", JSON.stringify(newUser));
         toast.success("Admin account created successfully!");
         return true;
@@ -170,12 +184,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(updatedUser);
       localStorage.setItem("cyberxpert-user", JSON.stringify(updatedUser));
       
-      // Also update the user in the allDevs list if they exist there
-      if (user.role === "Dev") {
-        setAllDevs(prev => prev.map(dev => 
-          dev.id === user.id ? { ...dev, ...updates } : dev
-        ));
-      }
+      // Also update the user in the allUsers list
+      setAllUsers(prev => prev.map(u => 
+        u.id === user.id ? { ...u, ...updates } : u
+      ));
       
       toast.success("Profile updated successfully");
     }
@@ -193,11 +205,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Check if username or email already exists
-      const existingDev = allDevs.find(
-        dev => dev.username === username || dev.email === email
+      const existingUser = allUsers.find(
+        u => u.username === username || u.email === email
       );
       
-      if (existingDev) {
+      if (existingUser) {
         toast.error("A user with this username or email already exists");
         return false;
       }
@@ -207,8 +219,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return false;
       }
       
-      // Create new dev account
-      const newDev: User = {
+      // Create new user account
+      const newUser: User = {
         id: Math.random().toString(36).substring(2, 9),
         username,
         email,
@@ -218,35 +230,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         avatarUrl: "/placeholder.svg"
       };
       
-      setAllDevs(prev => [...prev, newDev]);
-      toast.success(`Dev account created successfully for ${username}`);
+      setAllUsers(prev => [...prev, newUser]);
+      toast.success(`${role} account created successfully for ${username}`);
       return true;
     } catch (error) {
-      console.error("Add dev account error:", error);
-      toast.error("Failed to create dev account");
+      console.error("Add account error:", error);
+      toast.error("Failed to create account");
       return false;
     }
   };
   
   const deleteDevAccount = (userId: string) => {
-    const devToDelete = allDevs.find(dev => dev.id === userId);
+    const userToDelete = allUsers.find(u => u.id === userId);
     
-    if (devToDelete) {
-      setAllDevs(prev => prev.filter(dev => dev.id !== userId));
-      toast.success(`Deleted user: ${devToDelete.username}`);
+    if (userToDelete) {
+      setAllUsers(prev => prev.filter(u => u.id !== userId));
+      toast.success(`Deleted user: ${userToDelete.username}`);
     }
   };
   
   const updateDevStatus = (userId: string, status: UserStatus) => {
-    const updatedDevs = allDevs.map(dev => 
-      dev.id === userId ? { ...dev, status } : dev
+    const updatedUsers = allUsers.map(u => 
+      u.id === userId ? { ...u, status } : u
     );
     
-    setAllDevs(updatedDevs);
+    setAllUsers(updatedUsers);
     
-    const updatedDev = updatedDevs.find(dev => dev.id === userId);
-    if (updatedDev) {
-      toast.success(`Updated ${updatedDev.username}'s status to ${status}`);
+    const updatedUser = updatedUsers.find(u => u.id === userId);
+    if (updatedUser) {
+      toast.success(`Updated ${updatedUser.username}'s status to ${status}`);
       
       // If the currently logged in user is being updated, update their session too
       if (user && user.id === userId) {
@@ -260,7 +272,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     <AuthContext.Provider value={{
       user,
       isAuthenticated,
-      allDevs,
+      allUsers,
       login,
       signup,
       logout,

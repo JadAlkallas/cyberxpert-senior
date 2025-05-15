@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import Header from "@/components/layout/Header";
 import Sidebar from "@/components/layout/Sidebar";
@@ -18,8 +19,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
-// Form schema for adding new dev accounts
-const devAccountSchema = z.object({
+// Form schema for adding new accounts
+const accountSchema = z.object({
   username: z.string().min(3, {
     message: "Username must be at least 3 characters"
   }),
@@ -36,11 +37,12 @@ const devAccountSchema = z.object({
   message: "Passwords do not match",
   path: ["confirmPassword"]
 });
-type DevAccountFormValues = z.infer<typeof devAccountSchema>;
+type AccountFormValues = z.infer<typeof accountSchema>;
+
 const AdminUsers = () => {
   const {
     user,
-    allDevs,
+    allUsers,
     addDevAccount,
     deleteDevAccount,
     updateDevStatus
@@ -48,8 +50,8 @@ const AdminUsers = () => {
   const navigate = useNavigate();
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const form = useForm<DevAccountFormValues>({
-    resolver: zodResolver(devAccountSchema),
+  const form = useForm<AccountFormValues>({
+    resolver: zodResolver(accountSchema),
     defaultValues: {
       username: "",
       email: "",
@@ -65,6 +67,7 @@ const AdminUsers = () => {
     navigate("/home");
     return null;
   }
+  
   const handleDelete = async (userId: string) => {
     if (confirm("Are you sure you want to delete this user?")) {
       setProcessingId(userId);
@@ -74,6 +77,7 @@ const AdminUsers = () => {
       setProcessingId(null);
     }
   };
+  
   const handleToggleStatus = async (userId: string, currentStatus: string) => {
     setProcessingId(userId);
     // Simulate API delay
@@ -82,7 +86,8 @@ const AdminUsers = () => {
     updateDevStatus(userId, newStatus as "active" | "suspended");
     setProcessingId(null);
   };
-  const onSubmit = async (values: DevAccountFormValues) => {
+  
+  const onSubmit = async (values: AccountFormValues) => {
     setIsSubmitting(true);
     const result = await addDevAccount(values.username, values.email, values.password, values.role, values.status);
     if (result) {
@@ -90,6 +95,7 @@ const AdminUsers = () => {
     }
     setIsSubmitting(false);
   };
+  
   return <div className="min-h-screen flex flex-col">
       <Header />
       
@@ -100,24 +106,24 @@ const AdminUsers = () => {
           <div className="container mx-auto">
             <div className="mb-8">
               <h1 className="text-3xl font-bold mb-2">User Management</h1>
-              <p className="text-gray-600">Manage developer accounts and permissions</p>
+              <p className="text-gray-600">Manage all user accounts and permissions</p>
             </div>
             
-            <Tabs defaultValue="devs" className="mb-8">
+            <Tabs defaultValue="users" className="mb-8">
               <TabsList className="mb-4">
-                <TabsTrigger value="devs">All Accounts</TabsTrigger>
-                <TabsTrigger value="add">Add Developer</TabsTrigger>
+                <TabsTrigger value="users">All Accounts</TabsTrigger>
+                <TabsTrigger value="add">Add Account</TabsTrigger>
               </TabsList>
               
-              <TabsContent value="devs">
+              <TabsContent value="users">
                 <Card>
                   <CardHeader>
                     <CardTitle>All Accounts</CardTitle>
-                    <CardDescription>View and manage all  accounts</CardDescription>
+                    <CardDescription>View and manage all user accounts</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {allDevs.length === 0 ? <div className="text-center py-8 text-gray-500">
-                        No developer accounts found
+                    {allUsers.length === 0 ? <div className="text-center py-8 text-gray-500">
+                        No user accounts found
                       </div> : <Table>
                         <TableHeader>
                           <TableRow>
@@ -130,32 +136,32 @@ const AdminUsers = () => {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {allDevs.map(dev => <TableRow key={dev.id}>
-                              <TableCell className="font-medium">{dev.username}</TableCell>
-                              <TableCell>{dev.email}</TableCell>
+                          {allUsers.map(user => <TableRow key={user.id}>
+                              <TableCell className="font-medium">{user.username}</TableCell>
+                              <TableCell>{user.email}</TableCell>
                               <TableCell>
                                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                  {dev.role === "Dev" ? <User className="h-3.5 w-3.5 mr-1" /> : <Shield className="h-3.5 w-3.5 mr-1" />}
-                                  {dev.role}
+                                  {user.role === "Dev" ? <User className="h-3.5 w-3.5 mr-1" /> : <Shield className="h-3.5 w-3.5 mr-1" />}
+                                  {user.role}
                                 </span>
                               </TableCell>
                               <TableCell>
-                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${dev.status === "active" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
-                                  {dev.status === "active" ? <UserCheck className="h-3.5 w-3.5 mr-1" /> : <UserX className="h-3.5 w-3.5 mr-1" />}
-                                  {dev.status === "active" ? "Active" : "Suspended"}
+                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${user.status === "active" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
+                                  {user.status === "active" ? <UserCheck className="h-3.5 w-3.5 mr-1" /> : <UserX className="h-3.5 w-3.5 mr-1" />}
+                                  {user.status === "active" ? "Active" : "Suspended"}
                                 </span>
                               </TableCell>
                               <TableCell>
-                                {format(new Date(dev.createdAt), "MMM d, yyyy")}
+                                {format(new Date(user.createdAt), "MMM d, yyyy")}
                               </TableCell>
                               <TableCell className="text-right">
                                 <div className="flex justify-end gap-2">
-                                  <Button size="sm" variant={dev.status === "active" ? "destructive" : "outline"} className="h-8" onClick={() => handleToggleStatus(dev.id, dev.status)} disabled={processingId === dev.id}>
-                                    {processingId === dev.id ? <LoadingSpinner size="sm" className="mr-1" /> : dev.status === "active" ? <UserX className="h-4 w-4 mr-1" /> : <UserCheck className="h-4 w-4 mr-1" />}
-                                    {dev.status === "active" ? "Suspend" : "Activate"}
+                                  <Button size="sm" variant={user.status === "active" ? "destructive" : "outline"} className="h-8" onClick={() => handleToggleStatus(user.id, user.status)} disabled={processingId === user.id}>
+                                    {processingId === user.id ? <LoadingSpinner size="sm" className="mr-1" /> : user.status === "active" ? <UserX className="h-4 w-4 mr-1" /> : <UserCheck className="h-4 w-4 mr-1" />}
+                                    {user.status === "active" ? "Suspend" : "Activate"}
                                   </Button>
-                                  <Button size="sm" variant="destructive" className="h-8" onClick={() => handleDelete(dev.id)} disabled={processingId === dev.id}>
-                                    {processingId === dev.id ? <LoadingSpinner size="sm" className="mr-1" /> : <UserX className="h-4 w-4 mr-1" />}
+                                  <Button size="sm" variant="destructive" className="h-8" onClick={() => handleDelete(user.id)} disabled={processingId === user.id}>
+                                    {processingId === user.id ? <LoadingSpinner size="sm" className="mr-1" /> : <UserX className="h-4 w-4 mr-1" />}
                                     Delete
                                   </Button>
                                 </div>
@@ -170,8 +176,8 @@ const AdminUsers = () => {
               <TabsContent value="add">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Add Developer Account</CardTitle>
-                    <CardDescription>Create a new developer account</CardDescription>
+                    <CardTitle>Add User Account</CardTitle>
+                    <CardDescription>Create a new user account</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <Form {...form}>
@@ -277,7 +283,7 @@ const AdminUsers = () => {
                               Creating Account...
                             </> : <>
                               <UserPlus className="h-4 w-4" />
-                              Create Developer Account
+                              Create User Account
                             </>}
                         </Button>
                       </form>
@@ -291,4 +297,5 @@ const AdminUsers = () => {
       </div>
     </div>;
 };
+
 export default AdminUsers;
