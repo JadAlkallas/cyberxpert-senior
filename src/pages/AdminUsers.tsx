@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import Header from "@/components/layout/Header";
 import Sidebar from "@/components/layout/Sidebar";
@@ -21,9 +20,15 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 // Form schema for adding new dev accounts
 const devAccountSchema = z.object({
-  username: z.string().min(3, { message: "Username must be at least 3 characters" }),
-  email: z.string().email({ message: "Please enter a valid email address" }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters" }),
+  username: z.string().min(3, {
+    message: "Username must be at least 3 characters"
+  }),
+  email: z.string().email({
+    message: "Please enter a valid email address"
+  }),
+  password: z.string().min(6, {
+    message: "Password must be at least 6 characters"
+  }),
   confirmPassword: z.string(),
   role: z.enum(["Dev", "Admin"]),
   status: z.enum(["active", "suspended"])
@@ -31,15 +36,18 @@ const devAccountSchema = z.object({
   message: "Passwords do not match",
   path: ["confirmPassword"]
 });
-
 type DevAccountFormValues = z.infer<typeof devAccountSchema>;
-
 const AdminUsers = () => {
-  const { user, allDevs, addDevAccount, deleteDevAccount, updateDevStatus } = useAuth();
+  const {
+    user,
+    allDevs,
+    addDevAccount,
+    deleteDevAccount,
+    updateDevStatus
+  } = useAuth();
   const navigate = useNavigate();
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
   const form = useForm<DevAccountFormValues>({
     resolver: zodResolver(devAccountSchema),
     defaultValues: {
@@ -51,13 +59,12 @@ const AdminUsers = () => {
       status: "active"
     }
   });
-  
+
   // Redirect if not an admin
   if (user?.role !== "Admin") {
     navigate("/home");
     return null;
   }
-
   const handleDelete = async (userId: string) => {
     if (confirm("Are you sure you want to delete this user?")) {
       setProcessingId(userId);
@@ -67,7 +74,6 @@ const AdminUsers = () => {
       setProcessingId(null);
     }
   };
-  
   const handleToggleStatus = async (userId: string, currentStatus: string) => {
     setProcessingId(userId);
     // Simulate API delay
@@ -76,25 +82,15 @@ const AdminUsers = () => {
     updateDevStatus(userId, newStatus as "active" | "suspended");
     setProcessingId(null);
   };
-  
   const onSubmit = async (values: DevAccountFormValues) => {
     setIsSubmitting(true);
-    const result = await addDevAccount(
-      values.username,
-      values.email,
-      values.password,
-      values.role,
-      values.status
-    );
-    
+    const result = await addDevAccount(values.username, values.email, values.password, values.role, values.status);
     if (result) {
       form.reset();
     }
     setIsSubmitting(false);
   };
-
-  return (
-    <div className="min-h-screen flex flex-col">
+  return <div className="min-h-screen flex flex-col">
       <Header />
       
       <div className="flex-1 flex">
@@ -109,23 +105,20 @@ const AdminUsers = () => {
             
             <Tabs defaultValue="devs" className="mb-8">
               <TabsList className="mb-4">
-                <TabsTrigger value="devs">All Developers</TabsTrigger>
+                <TabsTrigger value="devs">All Accounts</TabsTrigger>
                 <TabsTrigger value="add">Add Developer</TabsTrigger>
               </TabsList>
               
               <TabsContent value="devs">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Developer Accounts</CardTitle>
-                    <CardDescription>View and manage all developer accounts</CardDescription>
+                    <CardTitle>All Accounts</CardTitle>
+                    <CardDescription>View and manage all  accounts</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {allDevs.length === 0 ? (
-                      <div className="text-center py-8 text-gray-500">
+                    {allDevs.length === 0 ? <div className="text-center py-8 text-gray-500">
                         No developer accounts found
-                      </div>
-                    ) : (
-                      <Table>
+                      </div> : <Table>
                         <TableHeader>
                           <TableRow>
                             <TableHead>Username</TableHead>
@@ -137,31 +130,18 @@ const AdminUsers = () => {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {allDevs.map((dev) => (
-                            <TableRow key={dev.id}>
+                          {allDevs.map(dev => <TableRow key={dev.id}>
                               <TableCell className="font-medium">{dev.username}</TableCell>
                               <TableCell>{dev.email}</TableCell>
                               <TableCell>
                                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                  {dev.role === "Dev" ? (
-                                    <User className="h-3.5 w-3.5 mr-1" />
-                                  ) : (
-                                    <Shield className="h-3.5 w-3.5 mr-1" />
-                                  )}
+                                  {dev.role === "Dev" ? <User className="h-3.5 w-3.5 mr-1" /> : <Shield className="h-3.5 w-3.5 mr-1" />}
                                   {dev.role}
                                 </span>
                               </TableCell>
                               <TableCell>
-                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                  dev.status === "active" 
-                                    ? "bg-green-100 text-green-800" 
-                                    : "bg-red-100 text-red-800"
-                                }`}>
-                                  {dev.status === "active" ? (
-                                    <UserCheck className="h-3.5 w-3.5 mr-1" />
-                                  ) : (
-                                    <UserX className="h-3.5 w-3.5 mr-1" />
-                                  )}
+                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${dev.status === "active" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
+                                  {dev.status === "active" ? <UserCheck className="h-3.5 w-3.5 mr-1" /> : <UserX className="h-3.5 w-3.5 mr-1" />}
                                   {dev.status === "active" ? "Active" : "Suspended"}
                                 </span>
                               </TableCell>
@@ -170,43 +150,19 @@ const AdminUsers = () => {
                               </TableCell>
                               <TableCell className="text-right">
                                 <div className="flex justify-end gap-2">
-                                  <Button 
-                                    size="sm" 
-                                    variant={dev.status === "active" ? "destructive" : "outline"} 
-                                    className="h-8"
-                                    onClick={() => handleToggleStatus(dev.id, dev.status)}
-                                    disabled={processingId === dev.id}
-                                  >
-                                    {processingId === dev.id ? (
-                                      <LoadingSpinner size="sm" className="mr-1" />
-                                    ) : dev.status === "active" ? (
-                                      <UserX className="h-4 w-4 mr-1" />
-                                    ) : (
-                                      <UserCheck className="h-4 w-4 mr-1" />
-                                    )}
+                                  <Button size="sm" variant={dev.status === "active" ? "destructive" : "outline"} className="h-8" onClick={() => handleToggleStatus(dev.id, dev.status)} disabled={processingId === dev.id}>
+                                    {processingId === dev.id ? <LoadingSpinner size="sm" className="mr-1" /> : dev.status === "active" ? <UserX className="h-4 w-4 mr-1" /> : <UserCheck className="h-4 w-4 mr-1" />}
                                     {dev.status === "active" ? "Suspend" : "Activate"}
                                   </Button>
-                                  <Button 
-                                    size="sm" 
-                                    variant="destructive" 
-                                    className="h-8"
-                                    onClick={() => handleDelete(dev.id)}
-                                    disabled={processingId === dev.id}
-                                  >
-                                    {processingId === dev.id ? (
-                                      <LoadingSpinner size="sm" className="mr-1" />
-                                    ) : (
-                                      <UserX className="h-4 w-4 mr-1" />
-                                    )}
+                                  <Button size="sm" variant="destructive" className="h-8" onClick={() => handleDelete(dev.id)} disabled={processingId === dev.id}>
+                                    {processingId === dev.id ? <LoadingSpinner size="sm" className="mr-1" /> : <UserX className="h-4 w-4 mr-1" />}
                                     Delete
                                   </Button>
                                 </div>
                               </TableCell>
-                            </TableRow>
-                          ))}
+                            </TableRow>)}
                         </TableBody>
-                      </Table>
-                    )}
+                      </Table>}
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -220,76 +176,54 @@ const AdminUsers = () => {
                   <CardContent>
                     <Form {...form}>
                       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                        <FormField
-                          control={form.control}
-                          name="username"
-                          render={({ field }) => (
-                            <FormItem>
+                        <FormField control={form.control} name="username" render={({
+                        field
+                      }) => <FormItem>
                               <FormLabel>Username</FormLabel>
                               <FormControl>
                                 <Input placeholder="johndoe" {...field} />
                               </FormControl>
                               <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                            </FormItem>} />
                         
-                        <FormField
-                          control={form.control}
-                          name="email"
-                          render={({ field }) => (
-                            <FormItem>
+                        <FormField control={form.control} name="email" render={({
+                        field
+                      }) => <FormItem>
                               <FormLabel>Email</FormLabel>
                               <FormControl>
                                 <Input type="email" placeholder="john@example.com" {...field} />
                               </FormControl>
                               <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                            </FormItem>} />
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <FormField
-                            control={form.control}
-                            name="password"
-                            render={({ field }) => (
-                              <FormItem>
+                          <FormField control={form.control} name="password" render={({
+                          field
+                        }) => <FormItem>
                                 <FormLabel>Password</FormLabel>
                                 <FormControl>
                                   <Input type="password" placeholder="••••••" {...field} />
                                 </FormControl>
                                 <FormMessage />
-                              </FormItem>
-                            )}
-                          />
+                              </FormItem>} />
                           
-                          <FormField
-                            control={form.control}
-                            name="confirmPassword"
-                            render={({ field }) => (
-                              <FormItem>
+                          <FormField control={form.control} name="confirmPassword" render={({
+                          field
+                        }) => <FormItem>
                                 <FormLabel>Confirm Password</FormLabel>
                                 <FormControl>
                                   <Input type="password" placeholder="••••••" {...field} />
                                 </FormControl>
                                 <FormMessage />
-                              </FormItem>
-                            )}
-                          />
+                              </FormItem>} />
                         </div>
                         
-                        <FormField
-                          control={form.control}
-                          name="role"
-                          render={({ field }) => (
-                            <FormItem>
+                        <FormField control={form.control} name="role" render={({
+                        field
+                      }) => <FormItem>
                               <FormLabel>Role</FormLabel>
                               <FormControl>
-                                <RadioGroup 
-                                  onValueChange={field.onChange} 
-                                  defaultValue={field.value}
-                                  className="flex space-x-4"
-                                >
+                                <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex space-x-4">
                                   <div className="flex items-center space-x-2">
                                     <RadioGroupItem value="Dev" id="role-dev" />
                                     <Label htmlFor="role-dev" className="flex items-center">
@@ -307,22 +241,14 @@ const AdminUsers = () => {
                                 </RadioGroup>
                               </FormControl>
                               <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                            </FormItem>} />
                         
-                        <FormField
-                          control={form.control}
-                          name="status"
-                          render={({ field }) => (
-                            <FormItem>
+                        <FormField control={form.control} name="status" render={({
+                        field
+                      }) => <FormItem>
                               <FormLabel>Status</FormLabel>
                               <FormControl>
-                                <RadioGroup 
-                                  onValueChange={field.onChange} 
-                                  defaultValue={field.value}
-                                  className="flex space-x-4"
-                                >
+                                <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex space-x-4">
                                   <div className="flex items-center space-x-2">
                                     <RadioGroupItem value="active" id="status-active" />
                                     <Label htmlFor="status-active" className="flex items-center">
@@ -343,26 +269,16 @@ const AdminUsers = () => {
                                 Suspended users can log in but cannot perform testing actions
                               </FormDescription>
                               <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                            </FormItem>} />
                         
-                        <Button 
-                          type="submit" 
-                          disabled={isSubmitting}
-                          className="flex items-center gap-2"
-                        >
-                          {isSubmitting ? (
-                            <>
+                        <Button type="submit" disabled={isSubmitting} className="flex items-center gap-2">
+                          {isSubmitting ? <>
                               <LoadingSpinner size="sm" />
                               Creating Account...
-                            </>
-                          ) : (
-                            <>
+                            </> : <>
                               <UserPlus className="h-4 w-4" />
                               Create Developer Account
-                            </>
-                          )}
+                            </>}
                         </Button>
                       </form>
                     </Form>
@@ -373,8 +289,6 @@ const AdminUsers = () => {
           </div>
         </main>
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default AdminUsers;
