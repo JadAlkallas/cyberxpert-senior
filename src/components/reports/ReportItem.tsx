@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { ReportItem as ReportItemType } from "@/context/DataContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Download } from "lucide-react";
 import CircleProgressChart from "../dashboard/CircleProgressChart";
 
 interface ReportItemProps {
@@ -20,6 +20,45 @@ const ReportItem = ({ report }: ReportItemProps) => {
     month: 'short',
     day: 'numeric'
   });
+  
+  // Handle PDF download
+  const handleDownload = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent expanding/collapsing when clicking download
+    
+    // Create content for PDF
+    const content = `
+      Security Report: ${report.id}
+      Date: ${formattedDate} at ${report.time}
+      
+      Security Score: ${report.securityPosture.score}/100
+      
+      Issues:
+      - Critical: ${report.securityPosture.criticalIssues}
+      - High: ${report.securityPosture.highIssues}
+      - Medium: ${report.securityPosture.mediumIssues}
+      - Low: ${report.securityPosture.lowIssues}
+      
+      Details:
+      ${report.securityPosture.details}
+    `;
+    
+    // Create a Blob with the content
+    const blob = new Blob([content], { type: 'text/plain' });
+    
+    // Create a download link
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `security-report-${report.id}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    
+    // Clean up
+    setTimeout(() => {
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }, 100);
+  };
   
   return (
     <Card className="overflow-hidden">
@@ -37,7 +76,17 @@ const ReportItem = ({ report }: ReportItemProps) => {
           </span>
         </div>
         
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleDownload}
+            className="hidden sm:flex items-center gap-1"
+          >
+            <Download size={16} />
+            PDF
+          </Button>
+          
           <div className="hidden sm:block">
             <CircleProgressChart
               value={report.securityPosture.score}
@@ -46,6 +95,7 @@ const ReportItem = ({ report }: ReportItemProps) => {
               animate={false}
             />
           </div>
+          
           <Button variant="ghost" size="sm">
             {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </Button>
@@ -65,7 +115,19 @@ const ReportItem = ({ report }: ReportItemProps) => {
             </div>
             
             <div className="lg:col-span-3">
-              <h3 className="text-lg font-semibold mb-4">Security Issues</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">Security Issues</h3>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleDownload}
+                  className="sm:hidden flex items-center gap-1"
+                >
+                  <Download size={16} />
+                  PDF
+                </Button>
+              </div>
+              
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
                 <div className="bg-red-50 text-red-900 p-3 rounded-md">
                   <div className="text-xs opacity-80">Critical</div>
