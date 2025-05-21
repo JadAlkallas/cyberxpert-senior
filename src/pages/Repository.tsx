@@ -1,33 +1,30 @@
 
-import { useState } from "react";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useState, useEffect } from "react";
 import Header from "@/components/layout/Header";
 import Sidebar from "@/components/layout/Sidebar";
 import { useData } from "@/context/DataContext";
-import TestHistoryItem from "@/components/repository/TestHistoryItem";
+import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
+import TestHistoryItem from "@/components/repository/TestHistoryItem";
+import { useAuth } from "@/context/AuthContext";
 
 const Repository = () => {
-  const { testHistory } = useData();
-  
+  const { getUserVisibleTests, testHistory } = useData();
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filteredTests, setFilteredTests] = useState(getUserVisibleTests());
   
-  // Filter and search test history
-  const filteredTests = testHistory.filter(test => {
-    // Filter by status
-    if (filterStatus !== "all" && test.status !== filterStatus) {
-      return false;
-    }
-    
-    // Search by ID
-    if (searchTerm && !test.id.toLowerCase().includes(searchTerm.toLowerCase())) {
-      return false;
-    }
-    
-    return true;
-  });
+  const isAdmin = user?.role === "Admin";
+  const visibleTests = getUserVisibleTests();
+  
+  // Filter tests based on search term
+  useEffect(() => {
+    const filtered = visibleTests.filter(test => 
+      test.id.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      (isAdmin && test.createdBy?.username.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+    setFilteredTests(filtered);
+  }, [searchTerm, visibleTests, isAdmin]);
   
   return (
     <div className="min-h-screen flex flex-col">
@@ -40,41 +37,27 @@ const Repository = () => {
           <div className="container mx-auto">
             <div className="mb-8">
               <h1 className="text-3xl font-bold mb-2">Test Repository</h1>
-              <p className="text-gray-600">View and manage all your security test results</p>
+              <p className="text-gray-600">View historical security tests and results</p>
             </div>
             
-            {/* Filters and Search */}
-            <div className="mb-6 flex flex-col sm:flex-row gap-4">
-              <div className="relative flex-1">
+            {/* Search */}
+            <div className="mb-6">
+              <div className="relative max-w-md">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
-                  placeholder="Search by test ID..."
+                  placeholder={isAdmin ? "Search tests by ID or username..." : "Search tests by ID..."}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
                 />
-              </div>
-              
-              <div className="w-full sm:w-64">
-                <Select value={filterStatus} onValueChange={setFilterStatus}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Filter by status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Statuses</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="failed">Failed</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
             </div>
             
             {/* Test History List */}
             <div className="space-y-4">
               {filteredTests.length > 0 ? (
-                filteredTests.map((test) => (
-                  <TestHistoryItem key={test.id} test={test} />
+                filteredTests.map(test => (
+                  <TestHistoryItem key={test.id} test={test} showCreator={isAdmin} />
                 ))
               ) : (
                 <div className="bg-white rounded-lg p-8 text-center border">
@@ -84,18 +67,18 @@ const Repository = () => {
                     </svg>
                   </div>
                   
-                  {testHistory.length === 0 ? (
+                  {visibleTests.length === 0 ? (
                     <>
                       <h3 className="text-xl font-medium mb-1">No tests found</h3>
                       <p className="text-gray-500">
-                        Start an analysis to see your test results here.
+                        Start an analysis to generate test results.
                       </p>
                     </>
                   ) : (
                     <>
                       <h3 className="text-xl font-medium mb-1">No matching tests</h3>
                       <p className="text-gray-500">
-                        Try adjusting your search or filters.
+                        Try adjusting your search term.
                       </p>
                     </>
                   )}

@@ -1,5 +1,6 @@
 import { createContext, useState, useContext, ReactNode, useEffect } from "react";
 import { toast } from "@/components/ui/sonner";
+import { useAuth } from "./AuthContext";
 
 // Vulnerability detail type
 export interface VulnerabilityDetail {
@@ -15,6 +16,10 @@ export interface TestHistoryItem {
   date: string;
   time: string;
   status: "completed" | "failed" | "pending";
+  createdBy?: {
+    id: string;
+    username: string;
+  };
   details: {
     duration: string;
     components: number;
@@ -31,7 +36,11 @@ export interface ReportItem {
   id: string;
   date: string;
   time: string;
-  read: boolean; // Added the read property
+  read: boolean;
+  createdBy?: {
+    id: string;
+    username: string;
+  };
   securityPosture: {
     score: number;
     criticalIssues: number;
@@ -61,6 +70,8 @@ interface DataContextType {
   startAnalysis: () => Promise<boolean>;
   getTestById: (id: string) => TestHistoryItem | undefined;
   getReportById: (id: string) => ReportItem | undefined;
+  getUserVisibleTests: () => TestHistoryItem[];
+  getUserVisibleReports: () => ReportItem[];
 }
 
 // Create the context
@@ -136,6 +147,10 @@ const initialTestHistory: TestHistoryItem[] = [
     date: "2025-05-01",
     time: "09:30 AM",
     status: "completed",
+    createdBy: {
+      id: "dev-1",
+      username: "developer1"
+    },
     details: {
       duration: "3m 24s",
       components: 42,
@@ -157,6 +172,10 @@ const initialTestHistory: TestHistoryItem[] = [
     date: "2025-05-02",
     time: "02:15 PM",
     status: "completed",
+    createdBy: {
+      id: "dev-2",
+      username: "developer2"
+    },
     details: {
       duration: "2m 58s",
       components: 38,
@@ -176,6 +195,10 @@ const initialTestHistory: TestHistoryItem[] = [
     date: "2025-05-04",
     time: "11:45 AM",
     status: "failed",
+    createdBy: {
+      id: "dev-1",
+      username: "developer1"
+    },
     details: {
       duration: "0m 47s",
       components: 12,
@@ -190,7 +213,11 @@ const initialReports: ReportItem[] = [
     id: "report-001",
     date: "2025-05-01",
     time: "09:34 AM",
-    read: false, // Added read property to existing reports
+    read: false,
+    createdBy: {
+      id: "dev-1",
+      username: "developer1"
+    },
     securityPosture: {
       score: 78,
       criticalIssues: 1,
@@ -204,7 +231,11 @@ const initialReports: ReportItem[] = [
     id: "report-002",
     date: "2025-05-02",
     time: "02:18 PM",
-    read: false, // Added read property to existing reports
+    read: false,
+    createdBy: {
+      id: "dev-2",
+      username: "developer2"
+    },
     securityPosture: {
       score: 85,
       criticalIssues: 0,
@@ -247,6 +278,7 @@ const initialAnalyticsData: AnalyticsData = {
 
 // Create the data provider
 export const DataProvider = ({ children }: { children: ReactNode }) => {
+  const { user } = useAuth();
   const [testHistory, setTestHistory] = useState<TestHistoryItem[]>(initialTestHistory);
   const [reports, setReports] = useState<ReportItem[]>(initialReports);
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData>(initialAnalyticsData);
@@ -277,8 +309,18 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     const numVulnerabilities = Math.floor(Math.random() * 3) + 1;
     const selectedVulnerabilities = [];
     for (let i = 0; i < numVulnerabilities; i++) {
+      // Pick a random vulnerability type that hasn't been used yet
       const index = Math.floor(Math.random() * vulnerabilityTypes.length);
-      selectedVulnerabilities.push(vulnerabilityTypes[index]);
+      const vulnerability = vulnerabilityTypes[index];
+      
+      if (vulnerability) {
+        selectedVulnerabilities.push(vulnerability);
+      }
+      
+      // If we've used all types, but still need more, reset the available types
+      if (vulnerabilityTypes.length === 0 && i < numVulnerabilities - 1) {
+        vulnerabilityTypes.push(...vulnerabilityTypes);
+      }
     }
     
     const details = selectedVulnerabilities.map(v => 
@@ -333,6 +375,32 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     return { date, time };
   };
 
+  // Filter tests based on user role
+  const getUserVisibleTests = () => {
+    if (!user) return [];
+    
+    // Admin can see all tests
+    if (user.role === 'Admin') {
+      return testHistory;
+    }
+    
+    // Developers can only see their own tests
+    return testHistory.filter(test => test.createdBy?.id === user.id);
+  };
+  
+  // Filter reports based on user role
+  const getUserVisibleReports = () => {
+    if (!user) return [];
+    
+    // Admin can see all reports
+    if (user.role === 'Admin') {
+      return reports;
+    }
+    
+    // Developers can only see their own reports
+    return reports.filter(report => report.createdBy?.id === user.id);
+  };
+
   // Start a new analysis
   const startAnalysis = async (): Promise<boolean> => {
     try {
@@ -350,12 +418,19 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       // Generate number of vulnerabilities
       const vulnerabilityCount = Math.floor(Math.random() * 8) + 3; // 3-10
       
+      // Add user info to the new test
+      const createdBy = user ? {
+        id: user.id,
+        username: user.username
+      } : undefined;
+      
       // Create new test history item
       const newTest: TestHistoryItem = {
         id: newTestId,
         date,
         time,
         status: "completed",
+        createdBy,
         details: {
           duration: `${Math.floor(analysisTime / 1000)}s`,
           components: Math.floor(Math.random() * 20) + 30, // 30-49
@@ -372,7 +447,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         id: reportId,
         date,
         time,
-        read: false, // Set new report as unread
+        read: false,
+        createdBy,
         securityPosture: generateSecurityPosture()
       };
       
@@ -444,7 +520,9 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       isLoading,
       startAnalysis,
       getTestById,
-      getReportById
+      getReportById,
+      getUserVisibleTests,
+      getUserVisibleReports
     }}>
       {children}
     </DataContext.Provider>

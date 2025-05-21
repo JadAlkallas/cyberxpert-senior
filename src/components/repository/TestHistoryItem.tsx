@@ -10,9 +10,10 @@ import { toast } from "sonner";
 
 interface TestHistoryItemProps {
   test: TestHistoryItemType;
+  showCreator?: boolean;
 }
 
-const TestHistoryItem = ({ test }: TestHistoryItemProps) => {
+const TestHistoryItem = ({ test, showCreator = false }: TestHistoryItemProps) => {
   const [expanded, setExpanded] = useState(false);
   const [solvingInProgress, setSolvingInProgress] = useState(false);
   
@@ -56,6 +57,7 @@ const TestHistoryItem = ({ test }: TestHistoryItemProps) => {
       Security Test Report: ${test.id}
       Date: ${formattedDate} at ${test.time}
       Status: ${test.status}
+      ${test.createdBy ? `Created by: ${test.createdBy.username}` : ''}
       
       Test Duration: ${test.details.duration}
       Components Analyzed: ${test.details.components}
@@ -101,13 +103,20 @@ const TestHistoryItem = ({ test }: TestHistoryItemProps) => {
       >
         <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
           <span className="text-sm font-medium">{test.id}</span>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm text-gray-500">
-              {formattedDate} at {test.time}
+              {formattedDate} at ${test.time}
             </span>
             <span className={cn("text-xs px-2 py-0.5 rounded-full", getStatusColor(test.status))}>
               {test.status}
             </span>
+            
+            {/* Show creator badge for admins */}
+            {showCreator && test.createdBy && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
+                {test.createdBy.username}
+              </span>
+            )}
           </div>
         </div>
         
@@ -135,6 +144,13 @@ const TestHistoryItem = ({ test }: TestHistoryItemProps) => {
         <CardContent className="p-4 bg-gray-50 animate-fade-in">
           {/* Basic Test Information */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {showCreator && test.createdBy && (
+              <div className="bg-white rounded-md p-4 shadow-sm">
+                <div className="text-xs text-gray-500 mb-1">Created By</div>
+                <div className="text-lg font-semibold">{test.createdBy.username}</div>
+              </div>
+            )}
+            
             <div className="bg-white rounded-md p-4 shadow-sm">
               <div className="text-xs text-gray-500 mb-1">Duration</div>
               <div className="text-lg font-semibold">{test.details.duration}</div>

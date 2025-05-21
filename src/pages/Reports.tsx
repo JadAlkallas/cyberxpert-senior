@@ -6,20 +6,26 @@ import Sidebar from "@/components/layout/Sidebar";
 import { useData } from "@/context/DataContext";
 import ReportItem from "@/components/reports/ReportItem";
 import { Search } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 const Reports = () => {
-  const { reports } = useData();
+  const { getUserVisibleReports } = useData();
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
-  const [filteredReports, setFilteredReports] = useState(reports);
+  const [filteredReports, setFilteredReports] = useState(getUserVisibleReports());
   const [showNewAnimation, setShowNewAnimation] = useState(false);
+  
+  const isAdmin = user?.role === "Admin";
+  const reports = getUserVisibleReports();
   
   // Filter reports based on search term
   useEffect(() => {
     const filtered = reports.filter(report =>
-      report.id.toLowerCase().includes(searchTerm.toLowerCase())
+      report.id.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      (isAdmin && report.createdBy?.username.toLowerCase().includes(searchTerm.toLowerCase()))
     );
     setFilteredReports(filtered);
-  }, [searchTerm, reports]);
+  }, [searchTerm, reports, isAdmin]);
   
   // Detect new reports and show animation
   useEffect(() => {
@@ -60,7 +66,7 @@ const Reports = () => {
               <div className="relative max-w-md">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
-                  placeholder="Search reports by ID..."
+                  placeholder={isAdmin ? "Search reports by ID or username..." : "Search reports by ID..."}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -73,7 +79,7 @@ const Reports = () => {
               {filteredReports.length > 0 ? (
                 filteredReports.map((report, index) => (
                   <div key={report.id} className={index === 0 && showNewAnimation ? "animate-pulse-glow" : ""}>
-                    <ReportItem report={report} />
+                    <ReportItem report={report} showCreator={isAdmin} />
                   </div>
                 ))
               ) : (

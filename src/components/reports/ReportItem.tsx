@@ -9,9 +9,10 @@ import CircleProgressChart from "../dashboard/CircleProgressChart";
 
 interface ReportItemProps {
   report: ReportItemType;
+  showCreator?: boolean;
 }
 
-const ReportItem = ({ report }: ReportItemProps) => {
+const ReportItem = ({ report, showCreator = false }: ReportItemProps) => {
   const [expanded, setExpanded] = useState(false);
   
   // Format date
@@ -29,6 +30,7 @@ const ReportItem = ({ report }: ReportItemProps) => {
     const content = `
       Security Report: ${report.id}
       Date: ${formattedDate} at ${report.time}
+      ${report.createdBy ? `Created by: ${report.createdBy.username}` : ''}
       
       Security Score: ${report.securityPosture.score}/100
       
@@ -71,9 +73,18 @@ const ReportItem = ({ report }: ReportItemProps) => {
       >
         <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
           <span className="text-sm font-medium">{report.id}</span>
-          <span className="text-sm text-gray-500">
-            {formattedDate} at {report.time}
-          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm text-gray-500">
+              {formattedDate} at {report.time}
+            </span>
+            
+            {/* Show creator badge for admins */}
+            {showCreator && report.createdBy && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
+                {report.createdBy.username}
+              </span>
+            )}
+          </div>
         </div>
         
         <div className="flex items-center gap-2">
@@ -116,7 +127,12 @@ const ReportItem = ({ report }: ReportItemProps) => {
             
             <div className="lg:col-span-3">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">Security Issues</h3>
+                <div>
+                  <h3 className="text-lg font-semibold">Security Issues</h3>
+                  {showCreator && report.createdBy && (
+                    <p className="text-sm text-gray-600">Created by: {report.createdBy.username}</p>
+                  )}
+                </div>
                 <Button 
                   variant="outline" 
                   size="sm" 
