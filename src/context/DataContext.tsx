@@ -1,6 +1,13 @@
-
 import { createContext, useState, useContext, ReactNode, useEffect } from "react";
 import { toast } from "@/components/ui/sonner";
+
+// Vulnerability detail type
+export interface VulnerabilityDetail {
+  type: string;
+  description: string;
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  status?: 'fixed' | 'in_progress' | 'not_addressed';
+}
 
 // Test history item type
 export interface TestHistoryItem {
@@ -13,6 +20,9 @@ export interface TestHistoryItem {
     components: number;
     vulnerabilities: number;
     score: number;
+    vulnerabilityDetails?: VulnerabilityDetail[];
+    mitigationApplied?: boolean;
+    mitigationSuccess?: boolean;
   };
 }
 
@@ -65,7 +75,61 @@ export const useData = () => {
   return context;
 };
 
-// Initial mock data
+// Common vulnerability types
+const vulnerabilityTypes = [
+  {
+    type: "Authentication Bypass",
+    description: "Vulnerability allowing users to bypass authentication mechanisms",
+    severity: 'critical'
+  },
+  {
+    type: "SQL Injection",
+    description: "Ability to inject malicious SQL code that could manipulate database operations",
+    severity: 'high'
+  },
+  {
+    type: "Cross-Site Scripting (XSS)",
+    description: "Injection of client-side scripts into web pages viewed by other users",
+    severity: 'high'
+  },
+  {
+    type: "Insecure Dependencies",
+    description: "Use of third-party libraries with known security vulnerabilities",
+    severity: 'medium'
+  },
+  {
+    type: "API Exposure",
+    description: "Sensitive API endpoints exposed without proper authorization",
+    severity: 'medium'
+  },
+  {
+    type: "Weak Encryption",
+    description: "Use of weak or outdated encryption algorithms for sensitive data",
+    severity: 'high'
+  },
+  {
+    type: "Access Control Flaws",
+    description: "Improper implementation of access controls allowing unauthorized actions",
+    severity: 'medium'
+  },
+  {
+    type: "CSRF Vulnerability",
+    description: "Cross-Site Request Forgery allowing attackers to perform actions as authenticated users",
+    severity: 'medium'
+  },
+  {
+    type: "File Upload Vulnerability",
+    description: "Insecure file upload implementation that could allow malicious files",
+    severity: 'medium'
+  },
+  {
+    type: "Server Misconfiguration",
+    description: "Server settings that expose security vulnerabilities or sensitive information",
+    severity: 'low'
+  }
+] as const;
+
+// Initial mock data with vulnerability details
 const initialTestHistory: TestHistoryItem[] = [
   {
     id: "test-001",
@@ -76,7 +140,16 @@ const initialTestHistory: TestHistoryItem[] = [
       duration: "3m 24s",
       components: 42,
       vulnerabilities: 7,
-      score: 78
+      score: 78,
+      vulnerabilityDetails: [
+        { ...vulnerabilityTypes[0], status: 'not_addressed' },
+        { ...vulnerabilityTypes[1], status: 'not_addressed' },
+        { ...vulnerabilityTypes[3], status: 'not_addressed' },
+        { ...vulnerabilityTypes[4], status: 'not_addressed' },
+        { ...vulnerabilityTypes[7], status: 'not_addressed' },
+        { ...vulnerabilityTypes[8], status: 'not_addressed' },
+        { ...vulnerabilityTypes[9], status: 'not_addressed' }
+      ]
     }
   },
   {
@@ -88,7 +161,14 @@ const initialTestHistory: TestHistoryItem[] = [
       duration: "2m 58s",
       components: 38,
       vulnerabilities: 5,
-      score: 85
+      score: 85,
+      vulnerabilityDetails: [
+        { ...vulnerabilityTypes[2], status: 'not_addressed' },
+        { ...vulnerabilityTypes[3], status: 'not_addressed' },
+        { ...vulnerabilityTypes[5], status: 'not_addressed' },
+        { ...vulnerabilityTypes[8], status: 'not_addressed' },
+        { ...vulnerabilityTypes[9], status: 'not_addressed' }
+      ]
     }
   },
   {
@@ -215,6 +295,32 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     };
   };
 
+  // Generate vulnerability details for a test
+  const generateVulnerabilityDetails = (count: number): VulnerabilityDetail[] => {
+    const details: VulnerabilityDetail[] = [];
+    const availableTypes = [...vulnerabilityTypes];
+    
+    for (let i = 0; i < count; i++) {
+      // Pick a random vulnerability type that hasn't been used yet
+      const index = Math.floor(Math.random() * availableTypes.length);
+      const vulnerability = availableTypes.splice(index, 1)[0];
+      
+      if (vulnerability) {
+        details.push({
+          ...vulnerability,
+          status: 'not_addressed'
+        });
+      }
+      
+      // If we've used all types, but still need more, reset the available types
+      if (availableTypes.length === 0 && i < count - 1) {
+        availableTypes.push(...vulnerabilityTypes);
+      }
+    }
+    
+    return details;
+  };
+
   // Format the current date and time
   const getCurrentDateTime = () => {
     const now = new Date();
@@ -241,6 +347,9 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       const reportId = `report-${String(reports.length + 1).padStart(3, '0')}`;
       const { date, time } = getCurrentDateTime();
       
+      // Generate number of vulnerabilities
+      const vulnerabilityCount = Math.floor(Math.random() * 8) + 3; // 3-10
+      
       // Create new test history item
       const newTest: TestHistoryItem = {
         id: newTestId,
@@ -250,8 +359,11 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         details: {
           duration: `${Math.floor(analysisTime / 1000)}s`,
           components: Math.floor(Math.random() * 20) + 30, // 30-49
-          vulnerabilities: Math.floor(Math.random() * 8) + 3, // 3-10
-          score: Math.floor(Math.random() * 30) + 70 // 70-99
+          vulnerabilities: vulnerabilityCount,
+          score: Math.floor(Math.random() * 30) + 70, // 70-99
+          vulnerabilityDetails: generateVulnerabilityDetails(vulnerabilityCount),
+          mitigationApplied: false,
+          mitigationSuccess: false
         }
       };
       
