@@ -1,6 +1,6 @@
 
 // Base API configuration
-const API_BASE_URL = process.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
 
 // API request helper
 const apiRequest = async <T>(endpoint: string, options?: RequestInit): Promise<T> => {
@@ -17,7 +17,6 @@ const apiRequest = async <T>(endpoint: string, options?: RequestInit): Promise<T
   }
 
   const config: RequestInit = {
-    headers: defaultHeaders,
     ...options,
     headers: {
       ...defaultHeaders,

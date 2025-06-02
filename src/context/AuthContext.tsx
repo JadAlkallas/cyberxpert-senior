@@ -1,3 +1,4 @@
+
 import { createContext, useState, useContext, ReactNode, useEffect } from "react";
 import { toast } from "@/components/ui/sonner";
 import { useNavigate } from "react-router-dom";
@@ -7,7 +8,7 @@ import { useApi } from "@/hooks/useApi";
 export type UserRole = "Admin" | "Dev";
 export type UserStatus = "active" | "suspended";
 
-interface User {
+export interface User {
   id: string;
   username: string;
   email: string;
