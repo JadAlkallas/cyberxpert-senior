@@ -1,7 +1,8 @@
-
 import { createContext, useState, useContext, ReactNode, useEffect } from "react";
 import { toast } from "@/components/ui/sonner";
 import { useNavigate } from "react-router-dom";
+import { authApi } from "@/services/authApi";
+import { useApi } from "@/hooks/useApi";
 
 export type UserRole = "Admin" | "Dev";
 export type UserStatus = "active" | "suspended";
@@ -20,13 +21,15 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   allUsers: User[];
+  isLoading: boolean;
   login: (username: string, password: string, role: UserRole) => Promise<boolean>;
   signup: (username: string, email: string, password: string, role: UserRole) => Promise<boolean>;
   logout: () => void;
-  updateUserProfile: (updates: Partial<User>) => void;
+  updateUserProfile: (updates: Partial<User>) => Promise<boolean>;
   addDevAccount: (username: string, email: string, password: string, role: UserRole, status: UserStatus) => Promise<boolean>;
-  deleteDevAccount: (userId: string) => void;
-  updateDevStatus: (userId: string, status: UserStatus) => void;
+  deleteDevAccount: (userId: string) => Promise<boolean>;
+  updateDevStatus: (userId: string, status: UserStatus) => Promise<boolean>;
+  refreshUsers: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -45,152 +48,160 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return savedUser ? JSON.parse(savedUser) : null;
   });
   
-  const [allUsers, setAllUsers] = useState<User[]>(() => {
-    const savedDevs = localStorage.getItem("cyberxpert-devs");
-    const devUsers = savedDevs ? JSON.parse(savedDevs) : [];
-    
-    // Initialize with admin users if they exist
-    const savedAdmins = localStorage.getItem("cyberxpert-admins");
-    const adminUsers = savedAdmins ? JSON.parse(savedAdmins) : [];
-    
-    return [...devUsers, ...adminUsers];
-  });
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   
   const navigate = useNavigate();
+
+  // API hooks
+  const loginApi = useApi(authApi.login);
+  const signupApi = useApi(authApi.signup);
+  const logoutApi = useApi(authApi.logout);
+  const updateProfileApi = useApi(authApi.updateProfile, {
+    showSuccessToast: true,
+    successMessage: "Profile updated successfully"
+  });
+  const getAllUsersApi = useApi(authApi.getAllUsers);
+  const createUserApi = useApi(authApi.createUser, {
+    showSuccessToast: true
+  });
+  const updateUserApi = useApi(authApi.updateUser, {
+    showSuccessToast: true
+  });
+  const deleteUserApi = useApi(authApi.deleteUser, {
+    showSuccessToast: true
+  });
 
   const isAuthenticated = !!user && (user.status === "active" || user.role === "Admin");
   
   useEffect(() => {
-    // Save all devs
-    const devUsers = allUsers.filter(user => user.role === "Dev");
-    localStorage.setItem("cyberxpert-devs", JSON.stringify(devUsers));
-    
-    // Save all admins
-    const adminUsers = allUsers.filter(user => user.role === "Admin");
-    localStorage.setItem("cyberxpert-admins", JSON.stringify(adminUsers));
-  }, [allUsers]);
+    const token = localStorage.getItem('auth-token');
+    if (token && !user) {
+      // Try to get user profile with existing token
+      authApi.getProfile()
+        .then(userData => {
+          setUser(userData);
+          localStorage.setItem("cyberxpert-user", JSON.stringify(userData));
+        })
+        .catch(() => {
+          // Token is invalid, clear it
+          localStorage.removeItem('auth-token');
+          localStorage.removeItem('refresh-token');
+          localStorage.removeItem('cyberxpert-user');
+        });
+    }
+  }, []);
 
-  // Mock login - in a real app this would call an API
+  // Load all users for admin
+  useEffect(() => {
+    if (user?.role === 'Admin') {
+      refreshUsers();
+    }
+  }, [user]);
+
+  // Refresh users list (admin only)
+  const refreshUsers = async (): Promise<void> => {
+    if (user?.role !== 'Admin') return;
+    
+    const users = await getAllUsersApi.execute();
+    if (users) {
+      setAllUsers(users);
+    }
+  };
+
+  // Login function
   const login = async (username: string, password: string, role: UserRole): Promise<boolean> => {
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      setIsLoading(true);
       
-      // Check if this is a registered user
-      const existingUser = allUsers.find(
-        u => u.username === username && u.role === role
-      );
+      const result = await loginApi.execute({ username, password, role });
       
-      if (existingUser) {
-        if (existingUser.status === "suspended") {
-          setUser(existingUser); // Allow login but with restricted access
-          localStorage.setItem("cyberxpert-user", JSON.stringify(existingUser));
+      if (result) {
+        setUser(result.user);
+        localStorage.setItem("cyberxpert-user", JSON.stringify(result.user));
+        localStorage.setItem("auth-token", result.token);
+        localStorage.setItem("refresh-token", result.refreshToken);
+        
+        if (result.user.status === "suspended") {
           toast.warning("Your account has been suspended. Contact an administrator for assistance.");
-          return true;
+        } else {
+          toast.success(`Welcome back, ${username}!`);
         }
         
-        // Login as existing user
-        setUser(existingUser);
-        localStorage.setItem("cyberxpert-user", JSON.stringify(existingUser));
-        toast.success(`Welcome back, ${username}!`);
+        setIsLoading(false);
         return true;
       }
       
-      // In a real app, validate credentials against an API
-      if (password.length < 6) {
-        toast.error("Invalid credentials");
-        return false;
-      }
-
-      // Create a mock admin user if role is admin and doesn't exist yet
-      if (role === "Admin") {
-        const newUser: User = {
-          id: Math.random().toString(36).substring(2, 9),
-          username,
-          email: `${username}@example.com`,
-          role,
-          status: "active",
-          createdAt: new Date().toISOString(),
-          avatarUrl: "/placeholder.svg"
-        };
-
-        setUser(newUser);
-        setAllUsers(prev => [...prev, newUser]);
-        localStorage.setItem("cyberxpert-user", JSON.stringify(newUser));
-        toast.success(`Welcome back, ${username}!`);
-        
-        return true;
-      }
-      
-      toast.error("User not found");
+      setIsLoading(false);
       return false;
     } catch (error) {
       console.error("Login error:", error);
-      toast.error("Login failed");
+      setIsLoading(false);
       return false;
     }
   };
 
-  // Mock signup - in a real app this would call an API
+  // Signup function
   const signup = async (username: string, email: string, password: string, role: UserRole): Promise<boolean> => {
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      setIsLoading(true);
       
-      // In a real app, this would send data to an API
-      if (password.length < 6) {
-        toast.error("Password must be at least 6 characters");
-        return false;
-      }
-
-      // Only Admin signup is allowed
-      if (role === "Admin") {
-        const newUser: User = {
-          id: Math.random().toString(36).substring(2, 9),
-          username,
-          email,
-          role,
-          status: "active",
-          createdAt: new Date().toISOString(),
-          avatarUrl: "/placeholder.svg"
-        };
-
-        setUser(newUser);
-        setAllUsers(prev => [...prev, newUser]);
-        localStorage.setItem("cyberxpert-user", JSON.stringify(newUser));
-        toast.success("Admin account created successfully!");
+      const result = await signupApi.execute({ username, email, password, role });
+      
+      if (result) {
+        setUser(result.user);
+        localStorage.setItem("cyberxpert-user", JSON.stringify(result.user));
+        localStorage.setItem("auth-token", result.token);
+        localStorage.setItem("refresh-token", result.refreshToken);
+        
+        toast.success("Account created successfully!");
+        setIsLoading(false);
         return true;
-      } else {
-        toast.error("Only Admin accounts can be created via signup");
-        return false;
       }
+      
+      setIsLoading(false);
+      return false;
     } catch (error) {
       console.error("Signup error:", error);
-      toast.error("Failed to create account");
+      setIsLoading(false);
       return false;
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem("cyberxpert-user");
-    navigate("/login");
-    toast.success("Logged out successfully");
+  const logout = async () => {
+    try {
+      await logoutApi.execute();
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
+      setUser(null);
+      setAllUsers([]);
+      localStorage.removeItem("cyberxpert-user");
+      localStorage.removeItem("auth-token");
+      localStorage.removeItem("refresh-token");
+      navigate("/login");
+      toast.success("Logged out successfully");
+    }
   };
 
-  const updateUserProfile = (updates: Partial<User>) => {
-    if (user) {
-      const updatedUser = { ...user, ...updates };
-      setUser(updatedUser);
-      localStorage.setItem("cyberxpert-user", JSON.stringify(updatedUser));
+  const updateUserProfile = async (updates: Partial<User>): Promise<boolean> => {
+    if (!user) return false;
+    
+    const result = await updateProfileApi.execute(updates);
+    
+    if (result) {
+      setUser(result);
+      localStorage.setItem("cyberxpert-user", JSON.stringify(result));
       
-      // Also update the user in the allUsers list
+      // Also update the user in the allUsers list if it exists
       setAllUsers(prev => prev.map(u => 
         u.id === user.id ? { ...u, ...updates } : u
       ));
       
-      toast.success("Profile updated successfully");
+      return true;
     }
+    
+    return false;
   };
   
   const addDevAccount = async (
@@ -200,72 +211,60 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     role: UserRole,
     status: UserStatus
   ): Promise<boolean> => {
-    try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Check if username or email already exists
-      const existingUser = allUsers.find(
-        u => u.username === username || u.email === email
-      );
-      
-      if (existingUser) {
-        toast.error("A user with this username or email already exists");
-        return false;
-      }
-      
-      if (password.length < 6) {
-        toast.error("Password must be at least 6 characters");
-        return false;
-      }
-      
-      // Create new user account
-      const newUser: User = {
-        id: Math.random().toString(36).substring(2, 9),
-        username,
-        email,
-        role,
-        status,
-        createdAt: new Date().toISOString(),
-        avatarUrl: "/placeholder.svg"
-      };
-      
-      setAllUsers(prev => [...prev, newUser]);
-      toast.success(`${role} account created successfully for ${username}`);
+    const result = await createUserApi.execute({
+      username,
+      email,
+      password,
+      role,
+      status
+    });
+    
+    if (result) {
+      setAllUsers(prev => [...prev, result]);
       return true;
-    } catch (error) {
-      console.error("Add account error:", error);
-      toast.error("Failed to create account");
-      return false;
     }
+    
+    return false;
   };
   
-  const deleteDevAccount = (userId: string) => {
-    const userToDelete = allUsers.find(u => u.id === userId);
+  const deleteDevAccount = async (userId: string): Promise<boolean> => {
+    const result = await deleteUserApi.execute(userId);
     
-    if (userToDelete) {
+    if (result?.success) {
+      const userToDelete = allUsers.find(u => u.id === userId);
       setAllUsers(prev => prev.filter(u => u.id !== userId));
-      toast.success(`Deleted user: ${userToDelete.username}`);
+      
+      if (userToDelete) {
+        toast.success(`Deleted user: ${userToDelete.username}`);
+      }
+      
+      return true;
     }
+    
+    return false;
   };
   
-  const updateDevStatus = (userId: string, status: UserStatus) => {
-    const updatedUsers = allUsers.map(u => 
-      u.id === userId ? { ...u, status } : u
-    );
+  const updateDevStatus = async (userId: string, status: UserStatus): Promise<boolean> => {
+    const result = await updateUserApi.execute(userId, { status });
     
-    setAllUsers(updatedUsers);
-    
-    const updatedUser = updatedUsers.find(u => u.id === userId);
-    if (updatedUser) {
-      toast.success(`Updated ${updatedUser.username}'s status to ${status}`);
+    if (result) {
+      setAllUsers(prev => prev.map(u => 
+        u.id === userId ? { ...u, status } : u
+      ));
+      
+      toast.success(`Updated ${result.username}'s status to ${status}`);
       
       // If the currently logged in user is being updated, update their session too
       if (user && user.id === userId) {
-        setUser({ ...user, status });
-        localStorage.setItem("cyberxpert-user", JSON.stringify({ ...user, status }));
+        const updatedUser = { ...user, status };
+        setUser(updatedUser);
+        localStorage.setItem("cyberxpert-user", JSON.stringify(updatedUser));
       }
+      
+      return true;
     }
+    
+    return false;
   };
 
   return (
@@ -273,13 +272,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       user,
       isAuthenticated,
       allUsers,
+      isLoading: isLoading || loginApi.loading || signupApi.loading,
       login,
       signup,
       logout,
       updateUserProfile,
       addDevAccount,
       deleteDevAccount,
-      updateDevStatus
+      updateDevStatus,
+      refreshUsers
     }}>
       {children}
     </AuthContext.Provider>

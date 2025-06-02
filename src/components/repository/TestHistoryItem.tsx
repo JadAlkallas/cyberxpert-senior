@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { TestHistoryItem as TestHistoryItemType } from "@/context/DataContext";
@@ -7,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp, Wrench, FileText } from "lucide-react";
 import CircleProgressChart from "../dashboard/CircleProgressChart";
 import { toast } from "sonner";
+import { useData } from "@/context/DataContext";
 
 interface TestHistoryItemProps {
   test: TestHistoryItemType;
@@ -16,6 +16,7 @@ interface TestHistoryItemProps {
 const TestHistoryItem = ({ test, showCreator = false }: TestHistoryItemProps) => {
   const [expanded, setExpanded] = useState(false);
   const [solvingInProgress, setSolvingInProgress] = useState(false);
+  const { solveVulnerabilities } = useData();
   
   // Format date
   const formattedDate = new Date(test.date).toLocaleDateString('en-US', {
@@ -33,17 +34,26 @@ const TestHistoryItem = ({ test, showCreator = false }: TestHistoryItemProps) =>
     }
   };
   
-  // Handle solving vulnerabilities
-  const handleSolveVulnerabilities = (e: React.MouseEvent) => {
+  // Handle solving vulnerabilities with API
+  const handleSolveVulnerabilities = async (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent expanding/collapsing
     
     setSolvingInProgress(true);
     
-    // Simulate solving process
-    setTimeout(() => {
+    try {
+      const success = await solveVulnerabilities(test.id);
+      
+      if (success) {
+        toast.success("Vulnerabilities analysis complete. Some issues may require manual intervention.");
+      } else {
+        toast.error("Failed to solve vulnerabilities. Please try again.");
+      }
+    } catch (error) {
+      console.error('Error solving vulnerabilities:', error);
+      toast.error("An error occurred while solving vulnerabilities.");
+    } finally {
       setSolvingInProgress(false);
-      toast.success("Vulnerabilities analysis complete. Some issues may require manual intervention.");
-    }, 2500);
+    }
   };
   
   // Handle report generation

@@ -1,6 +1,8 @@
 import { createContext, useState, useContext, ReactNode, useEffect } from "react";
 import { toast } from "@/components/ui/sonner";
 import { useAuth } from "./AuthContext";
+import { securityApi } from "@/services/securityApi";
+import { useApi } from "@/hooks/useApi";
 
 // Vulnerability detail type
 export interface VulnerabilityDetail {
@@ -72,6 +74,8 @@ interface DataContextType {
   getReportById: (id: string) => ReportItem | undefined;
   getUserVisibleTests: () => TestHistoryItem[];
   getUserVisibleReports: () => ReportItem[];
+  refreshData: () => Promise<void>;
+  solveVulnerabilities: (testId: string) => Promise<boolean>;
 }
 
 // Create the context
@@ -284,95 +288,74 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData>(initialAnalyticsData);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Generate a random security posture report
-  const generateSecurityPosture = (): ReportItem["securityPosture"] => {
-    const score = Math.floor(Math.random() * 30) + 70; // 70-99
-    const criticalIssues = Math.floor(Math.random() * 2); // 0-1
-    const highIssues = Math.floor(Math.random() * 3); // 0-2
-    const mediumIssues = Math.floor(Math.random() * 4); // 0-3
-    const lowIssues = Math.floor(Math.random() * 5); // 0-4
-    
-    const vulnerabilityTypes = [
-      "Authentication bypass",
-      "SQL injection",
-      "Cross-site scripting",
-      "Insecure dependencies",
-      "API exposure",
-      "Weak encryption",
-      "Access control",
-      "CSRF vulnerability",
-      "File upload vulnerability",
-      "Server misconfiguration"
-    ];
-    
-    // Pick 1-3 random vulnerabilities
-    const numVulnerabilities = Math.floor(Math.random() * 3) + 1;
-    const selectedVulnerabilities = [];
-    for (let i = 0; i < numVulnerabilities; i++) {
-      // Pick a random vulnerability type that hasn't been used yet
-      const index = Math.floor(Math.random() * vulnerabilityTypes.length);
-      const vulnerability = vulnerabilityTypes[index];
-      
-      if (vulnerability) {
-        selectedVulnerabilities.push(vulnerability);
-      }
-      
-      // If we've used all types, but still need more, reset the available types
-      if (vulnerabilityTypes.length === 0 && i < numVulnerabilities - 1) {
-        vulnerabilityTypes.push(...vulnerabilityTypes);
-      }
-    }
-    
-    const details = selectedVulnerabilities.map(v => 
-      `${v} detected in application components. Remediation recommended.`
-    ).join(" ");
-    
-    return {
-      score,
-      criticalIssues,
-      highIssues,
-      mediumIssues,
-      lowIssues,
-      details
-    };
-  };
+  // API hooks
+  const startAnalysisApi = useApi(securityApi.startAnalysis, {
+    showSuccessToast: true,
+    successMessage: "Analysis started successfully!"
+  });
 
-  // Generate vulnerability details for a test
-  const generateVulnerabilityDetails = (count: number): VulnerabilityDetail[] => {
-    const details: VulnerabilityDetail[] = [];
-    const availableTypes = [...vulnerabilityTypes];
-    
-    for (let i = 0; i < count; i++) {
-      // Pick a random vulnerability type that hasn't been used yet
-      const index = Math.floor(Math.random() * availableTypes.length);
-      const vulnerability = availableTypes.splice(index, 1)[0];
-      
-      if (vulnerability) {
-        details.push({
-          ...vulnerability,
-          status: 'not_addressed'
-        });
-      }
-      
-      // If we've used all types, but still need more, reset the available types
-      if (availableTypes.length === 0 && i < count - 1) {
-        availableTypes.push(...vulnerabilityTypes);
-      }
-    }
-    
-    return details;
-  };
+  const getTestsApi = useApi(securityApi.getTests);
+  const getReportsApi = useApi(securityApi.getReports);
+  const getAnalyticsApi = useApi(securityApi.getAnalytics);
+  const solveVulnerabilitiesApi = useApi(securityApi.solveVulnerabilities, {
+    showSuccessToast: true,
+    successMessage: "Vulnerability analysis complete"
+  });
 
-  // Format the current date and time
-  const getCurrentDateTime = () => {
-    const now = new Date();
-    const date = now.toISOString().split('T')[0];
-    const time = now.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    });
-    return { date, time };
+  // Load initial data when user changes
+  useEffect(() => {
+    if (user) {
+      refreshData();
+    } else {
+      // Clear data when user logs out
+      setTestHistory([]);
+      setReports([]);
+      setAnalyticsData({
+        totalTests: 0,
+        averageScore: 0,
+        criticalIssues: 0,
+        resolvedIssues: 0,
+        testsOverTime: [],
+        scoreDistribution: [],
+        vulnerabilityCategories: []
+      });
+    }
+  }, [user]);
+
+  // Refresh all data from API
+  const refreshData = async (): Promise<void> => {
+    if (!user) return;
+
+    try {
+      setIsLoading(true);
+
+      // Determine API parameters based on user role
+      const apiParams = user.role === 'Admin' ? {} : { userId: user.id };
+
+      // Fetch all data in parallel
+      const [testsData, reportsData, analyticsResult] = await Promise.all([
+        getTestsApi.execute(apiParams),
+        getReportsApi.execute(apiParams),
+        getAnalyticsApi.execute(user.role === 'Admin' ? undefined : user.id)
+      ]);
+
+      if (testsData) {
+        setTestHistory(testsData.tests);
+      }
+
+      if (reportsData) {
+        setReports(reportsData.reports);
+      }
+
+      if (analyticsResult) {
+        setAnalyticsData(analyticsResult);
+      }
+    } catch (error) {
+      console.error('Failed to refresh data:', error);
+      toast.error('Failed to load data');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Filter tests based on user role
@@ -403,103 +386,77 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
 
   // Start a new analysis
   const startAnalysis = async (): Promise<boolean> => {
+    if (!user) {
+      toast.error('Please log in to start analysis');
+      return false;
+    }
+
     try {
       setIsLoading(true);
       
-      // Simulate API delay (3-5 seconds)
-      const analysisTime = Math.floor(Math.random() * 2000) + 3000;
-      await new Promise(resolve => setTimeout(resolve, analysisTime));
-      
-      // Generate new test ID
-      const newTestId = `test-${String(testHistory.length + 1).padStart(3, '0')}`;
-      const reportId = `report-${String(reports.length + 1).padStart(3, '0')}`;
-      const { date, time } = getCurrentDateTime();
-      
-      // Generate number of vulnerabilities
-      const vulnerabilityCount = Math.floor(Math.random() * 8) + 3; // 3-10
-      
-      // Add user info to the new test
-      const createdBy = user ? {
-        id: user.id,
-        username: user.username
-      } : undefined;
-      
-      // Create new test history item
-      const newTest: TestHistoryItem = {
-        id: newTestId,
-        date,
-        time,
-        status: "completed",
-        createdBy,
-        details: {
-          duration: `${Math.floor(analysisTime / 1000)}s`,
-          components: Math.floor(Math.random() * 20) + 30, // 30-49
-          vulnerabilities: vulnerabilityCount,
-          score: Math.floor(Math.random() * 30) + 70, // 70-99
-          vulnerabilityDetails: generateVulnerabilityDetails(vulnerabilityCount),
-          mitigationApplied: false,
-          mitigationSuccess: false
-        }
+      const analysisRequest = {
+        userId: user.id,
+        analysisType: 'full' as const
       };
+
+      const result = await startAnalysisApi.execute(analysisRequest);
       
-      // Create new report
-      const newReport: ReportItem = {
-        id: reportId,
-        date,
-        time,
-        read: false,
-        createdBy,
-        securityPosture: generateSecurityPosture()
-      };
-      
-      // Update state with new data
-      setTestHistory(prev => [newTest, ...prev]);
-      setReports(prev => [newReport, ...prev]);
-      
-      // Update analytics data
-      const newAnalytics = { ...analyticsData };
-      newAnalytics.totalTests += 1;
-      
-      // Update tests over time
-      const lastDateEntry = newAnalytics.testsOverTime[newAnalytics.testsOverTime.length - 1];
-      if (lastDateEntry.date === date.split('-')[2]) {
-        lastDateEntry.count += 1;
-      } else {
-        newAnalytics.testsOverTime.push({ date: date.split('-')[2], count: 1 });
-        if (newAnalytics.testsOverTime.length > 7) {
-          newAnalytics.testsOverTime.shift();
-        }
+      if (result) {
+        // Poll for analysis completion
+        const pollForCompletion = async (analysisId: string) => {
+          const checkStatus = async () => {
+            try {
+              const statusResponse = await securityApi.getAnalysisStatus(analysisId);
+              
+              if (statusResponse.status === 'completed') {
+                // Refresh data to get the new test and report
+                await refreshData();
+                toast.success('Analysis completed successfully!');
+                setIsLoading(false);
+                return true;
+              } else if (statusResponse.status === 'failed') {
+                toast.error('Analysis failed');
+                setIsLoading(false);
+                return false;
+              } else {
+                // Continue polling
+                setTimeout(checkStatus, 2000);
+              }
+            } catch (error) {
+              console.error('Failed to check analysis status:', error);
+              setIsLoading(false);
+              return false;
+            }
+          };
+          
+          await checkStatus();
+        };
+
+        // Start polling
+        pollForCompletion(result.analysisId);
+        return true;
       }
       
-      // Recalculate average score
-      const allScores = [...testHistory, newTest].map(t => t.details.score).filter(s => s > 0);
-      newAnalytics.averageScore = Math.round(
-        allScores.reduce((sum, score) => sum + score, 0) / allScores.length
-      );
-      
-      // Update score distribution
-      const scoreRange = 
-        newTest.details.score <= 25 ? "0-25" :
-        newTest.details.score <= 50 ? "26-50" :
-        newTest.details.score <= 75 ? "51-75" : "76-100";
-      
-      const rangeIndex = newAnalytics.scoreDistribution.findIndex(d => d.range === scoreRange);
-      if (rangeIndex >= 0) {
-        newAnalytics.scoreDistribution[rangeIndex].count += 1;
-      }
-      
-      setAnalyticsData(newAnalytics);
-      
-      // Notify user
-      toast.success("Analysis completed successfully!");
       setIsLoading(false);
-      return true;
+      return false;
     } catch (error) {
       console.error("Analysis error:", error);
-      toast.error("Analysis failed");
       setIsLoading(false);
       return false;
     }
+  };
+
+  // Solve vulnerabilities for a test
+  const solveVulnerabilities = async (testId: string): Promise<boolean> => {
+    const result = await solveVulnerabilitiesApi.execute(testId);
+    
+    if (result?.success) {
+      // Refresh data to get updated test status
+      await refreshData();
+      return true;
+    }
+    
+    return false;
   };
 
   // Get a test by ID
@@ -517,12 +474,14 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       testHistory,
       reports,
       analyticsData,
-      isLoading,
+      isLoading: isLoading || startAnalysisApi.loading,
       startAnalysis,
       getTestById,
       getReportById,
       getUserVisibleTests,
-      getUserVisibleReports
+      getUserVisibleReports,
+      refreshData,
+      solveVulnerabilities
     }}>
       {children}
     </DataContext.Provider>
