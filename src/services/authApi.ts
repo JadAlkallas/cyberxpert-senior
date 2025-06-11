@@ -1,3 +1,4 @@
+
 import { apiRequest } from './api';
 import { User, UserRole, UserStatus } from '@/context/AuthContext';
 
@@ -82,12 +83,12 @@ export const authApi = {
     });
   },
 
-  // Admin: Get all users
+  // Admin: Get all users - Updated to match backend method name
   getAllUsers: async (): Promise<User[]> => {
     return apiRequest('/admin/users');
   },
 
-  // Admin: Create user account
+  // Admin: Create user account - Updated to match backend validation
   createUser: async (data: CreateUserRequest): Promise<User> => {
     console.log("authApi.createUser: Making request with data:", data);
     console.log("authApi.createUser: Current auth token:", localStorage.getItem("auth-token"));

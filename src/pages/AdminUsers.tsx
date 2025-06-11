@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import Header from "@/components/layout/Header";
 import Sidebar from "@/components/layout/Sidebar";
@@ -17,7 +18,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
-// Form schema for adding new accounts
+// Updated form schema to match backend validation
 const accountSchema = z.object({
   username: z.string().min(3, {
     message: "Username must be at least 3 characters"
@@ -25,12 +26,12 @@ const accountSchema = z.object({
   email: z.string().email({
     message: "Please enter a valid email address"
   }),
-  password: z.string().min(6, {
-    message: "Password must be at least 6 characters"
+  password: z.string().min(8, {
+    message: "Password must be at least 8 characters"
   }),
   confirmPassword: z.string(),
-  role: z.enum(["developer", "admin"]),
-  status: z.enum(["active", "suspended"])
+  role: z.enum(["developer", "admin", "security_analyst"]),
+  status: z.enum(["active", "suspended", "inactive"])
 }).refine(data => data.password === data.confirmPassword, {
   message: "Passwords do not match",
   path: ["confirmPassword"]
@@ -59,10 +60,15 @@ const AdminUsers = () => {
     }
   });
 
+  // Helper function to check if user is admin (handles case sensitivity)
+  const isUserAdmin = (userRole: string) => {
+    return userRole?.toLowerCase() === "admin";
+  };
+
   // Debug logging
   console.log("AdminUsers: Current user:", user);
   console.log("AdminUsers: User role:", user?.role);
-  console.log("AdminUsers: Is admin?", user?.role?.toLowerCase() === "admin");
+  console.log("AdminUsers: Is admin?", isUserAdmin(user?.role || ''));
   console.log("AdminUsers: Rendering admin panel");
   
   const handleDelete = async (userId: string) => {
@@ -80,7 +86,7 @@ const AdminUsers = () => {
     // Simulate API delay
     await new Promise(resolve => setTimeout(resolve, 1000));
     const newStatus = currentStatus === "active" ? "suspended" : "active";
-    updateDevStatus(userId, newStatus as "active" | "suspended");
+    updateDevStatus(userId, newStatus as "active" | "suspended" | "inactive");
     setProcessingId(null);
   };
   
@@ -162,7 +168,7 @@ const AdminUsers = () => {
                                   ) : (
                                     <UserX className="h-3.5 w-3.5 mr-1" />
                                   )}
-                                  {user.status === "active" ? "Active" : "Suspended"}
+                                  {user.status === "active" ? "Active" : user.status === "suspended" ? "Suspended" : "Inactive"}
                                 </span>
                               </TableCell>
                               <TableCell>
@@ -286,6 +292,13 @@ const AdminUsers = () => {
                                       Administrator
                                     </Label>
                                   </div>
+                                  <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="security_analyst" id="role-security-analyst" />
+                                    <Label htmlFor="role-security-analyst" className="flex items-center">
+                                      <Shield className="h-4 w-4 mr-2" />
+                                      Security Analyst
+                                    </Label>
+                                  </div>
                                 </RadioGroup>
                               </FormControl>
                               <FormMessage />
@@ -311,10 +324,17 @@ const AdminUsers = () => {
                                       Suspended
                                     </Label>
                                   </div>
+                                  <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="inactive" id="status-inactive" />
+                                    <Label htmlFor="status-inactive" className="flex items-center">
+                                      <UserX className="h-4 w-4 mr-2" />
+                                      Inactive
+                                    </Label>
+                                  </div>
                                 </RadioGroup>
                               </FormControl>
                               <FormDescription>
-                                Suspended users can log in but cannot perform testing actions
+                                Suspended/Inactive users can log in but cannot perform testing actions
                               </FormDescription>
                               <FormMessage />
                             </FormItem>} />

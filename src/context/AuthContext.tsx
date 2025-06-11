@@ -4,8 +4,9 @@ import { useNavigate } from "react-router-dom";
 import { authApi } from "@/services/authApi";
 import { useApi } from "@/hooks/useApi";
 
-export type UserRole = "admin" | "developer";
-export type UserStatus = "active" | "suspended";
+// Updated to match Laravel backend validation
+export type UserRole = "admin" | "developer" | "security_analyst";
+export type UserStatus = "active" | "suspended" | "inactive";
 
 export interface User {
   id: string;
@@ -72,7 +73,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     showSuccessToast: true
   });
 
-  const isAuthenticated = !!user && (user.status === "active" || user.role === "admin");
+  // Helper function to check if user is admin - handles case sensitivity
+  const isUserAdmin = (userRole: string) => {
+    return userRole?.toLowerCase() === "admin";
+  };
+
+  const isAuthenticated = !!user && (user.status === "active" || isUserAdmin(user.role));
   
   useEffect(() => {
     const token = localStorage.getItem('auth-token');
@@ -101,7 +107,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Refresh users list (admin only)
   const refreshUsers = async (): Promise<void> => {
-    if (user?.role !== 'admin') return;
+    if (!isUserAdmin(user?.role || '')) return;
     
     const users = await getAllUsersApi.execute();
     if (users) {
@@ -214,7 +220,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     console.log("addDevAccount: Starting user creation process");
     console.log("addDevAccount: Current user:", user);
     console.log("addDevAccount: Current user role:", user?.role);
-    console.log("addDevAccount: Is current user admin?", user?.role?.toLowerCase() === "admin");
+    console.log("addDevAccount: Is current user admin?", isUserAdmin(user?.role || ''));
     console.log("addDevAccount: Auth token:", localStorage.getItem("auth-token"));
     console.log("addDevAccount: Request data:", { username, email, role, status });
     
@@ -299,3 +305,5 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 };
 
 export default AuthProvider;
+
+}

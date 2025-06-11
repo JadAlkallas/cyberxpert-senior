@@ -22,6 +22,11 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+// Helper function to check if user is admin (handles case sensitivity)
+const isUserAdmin = (userRole: string) => {
+  return userRole?.toLowerCase() === "admin";
+};
+
 // Protected route wrapper
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, isAuthenticated } = useAuth();
@@ -42,13 +47,13 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   
   console.log("AdminRoute: user", user);
   console.log("AdminRoute: user role", user?.role);
-  console.log("AdminRoute: is admin?", user?.role?.toLowerCase() === "admin");
+  console.log("AdminRoute: is admin?", isUserAdmin(user?.role || ''));
   
   if (!user) {
     return <Navigate to="/login" />;
   }
   
-  if (user.role?.toLowerCase() !== "admin") {
+  if (!isUserAdmin(user.role || '')) {
     console.log("AdminRoute: Not admin, redirecting to home");
     return <Navigate to="/home" />;
   }

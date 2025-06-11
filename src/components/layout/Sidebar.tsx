@@ -13,20 +13,25 @@ const Sidebar = () => {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   
+  // Helper function to check if user is admin (handles case sensitivity)
+  const isUserAdmin = (userRole: string) => {
+    return userRole?.toLowerCase() === "admin";
+  };
+  
   // Debug logging
   console.log("Sidebar: Current user:", user);
   console.log("Sidebar: User role:", user?.role);
-  console.log("Sidebar: Is admin?", user?.role?.toLowerCase() === "admin");
+  console.log("Sidebar: Is admin?", isUserAdmin(user?.role || ''));
   
   // Only show sidebar for authenticated users
   if (!user) return null;
   
   // Get pending users count for notification badge
-  const pendingUsersCount = user.role?.toLowerCase() === "admin" ? 
+  const pendingUsersCount = isUserAdmin(user.role || '') ? 
     JSON.parse(localStorage.getItem("cyberxpert-pending-users") || "[]").length : 0;
   
   // Get unread reports count
-  const unreadReportsCount = user.role?.toLowerCase() === "admin" ? 
+  const unreadReportsCount = isUserAdmin(user.role || '') ? 
     reports.filter(report => !report.read).length : 0;
   
   // Build menu items dynamically based on user role
@@ -38,13 +43,13 @@ const Sidebar = () => {
       name: "Reports", 
       path: "/reports", 
       icon: <PieChart className="h-5 w-5" />,
-      badge: user.role?.toLowerCase() === "admin" && unreadReportsCount > 0 ? unreadReportsCount : null 
+      badge: isUserAdmin(user.role || '') && unreadReportsCount > 0 ? unreadReportsCount : null 
     },
     { name: "Chatbot", path: "/chatbot", icon: <MessageSquare className="h-5 w-5" /> },
   ];
   
   // Add admin-only menu items
-  if (user.role?.toLowerCase() === "admin") {
+  if (isUserAdmin(user.role || '')) {
     console.log("Sidebar: Adding User Management for admin");
     menuItems.push({ 
       name: "User Management", 
