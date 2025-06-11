@@ -28,6 +28,7 @@ export const useApi = <T>(
   });
 
   const execute = useCallback(async (...args: any[]): Promise<T | null> => {
+    console.log('useApi execute called with args:', args);
     setState(prev => ({ ...prev, loading: true, error: null }));
 
     try {
@@ -38,13 +39,20 @@ export const useApi = <T>(
         toast.success(options.successMessage || 'Operation completed successfully');
       }
       
+      console.log('useApi execute successful:', result);
       return result;
     } catch (error) {
+      console.error('useApi execute error:', error);
+      
       let errorMessage = 'An error occurred';
       
       if (error instanceof Error) {
-        if (error.message.includes('NetworkError') || error.message.includes('fetch')) {
-          errorMessage = 'Unable to connect to server. Please check if the backend is running at http://localhost:8000';
+        if (error.message.includes('Cannot connect to server') || 
+            error.message.includes('NetworkError') || 
+            error.message.includes('Failed to fetch')) {
+          errorMessage = 'Cannot connect to backend server. Please check:\n• Laravel server is running on http://localhost:8000\n• CORS is properly configured\n• No firewall blocking the connection';
+        } else if (error.message.includes('CORS')) {
+          errorMessage = 'CORS error: Please configure your Laravel backend to allow requests from this domain.';
         } else {
           errorMessage = error.message;
         }
