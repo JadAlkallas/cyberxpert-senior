@@ -1,6 +1,8 @@
 
+import { ENV } from '@/config/env';
+
 // Base API configuration
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ENV.API_BASE_URL;
 
 // API request helper
 const apiRequest = async <T>(endpoint: string, options?: RequestInit): Promise<T> => {
@@ -8,6 +10,8 @@ const apiRequest = async <T>(endpoint: string, options?: RequestInit): Promise<T
   
   const defaultHeaders = {
     'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'X-Requested-With': 'XMLHttpRequest', // Laravel CSRF protection
   };
 
   // Get auth token from localStorage if available
