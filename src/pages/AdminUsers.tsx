@@ -30,7 +30,7 @@ const accountSchema = z.object({
     message: "Password must be at least 6 characters"
   }),
   confirmPassword: z.string(),
-  role: z.enum(["dev", "admin"]),
+  role: z.enum(["developer", "admin"]),
   status: z.enum(["active", "suspended"])
 }).refine(data => data.password === data.confirmPassword, {
   message: "Passwords do not match",
@@ -56,7 +56,7 @@ const AdminUsers = () => {
       email: "",
       password: "",
       confirmPassword: "",
-      role: "dev",
+      role: "developer",
       status: "active"
     }
   });
@@ -140,7 +140,7 @@ const AdminUsers = () => {
                               <TableCell>{user.email}</TableCell>
                               <TableCell>
                                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                  {user.role === "dev" ? <User className="h-3.5 w-3.5 mr-1" /> : <Shield className="h-3.5 w-3.5 mr-1" />}
+                                  {user.role === "developer" ? <User className="h-3.5 w-3.5 mr-1" /> : <Shield className="h-3.5 w-3.5 mr-1" />}
                                   {user.role}
                                 </span>
                               </TableCell>
@@ -230,8 +230,8 @@ const AdminUsers = () => {
                               <FormControl>
                                 <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex space-x-4">
                                   <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="dev" id="role-dev" />
-                                    <Label htmlFor="role-dev" className="flex items-center">
+                                    <RadioGroupItem value="developer" id="role-developer" />
+                                    <Label htmlFor="role-developer" className="flex items-center">
                                       <User className="h-4 w-4 mr-2" />
                                       Developer
                                     </Label>
@@ -298,3 +298,5 @@ const AdminUsers = () => {
 };
 
 export default AdminUsers;
+
+</initial_code>
