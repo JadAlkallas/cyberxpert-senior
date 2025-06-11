@@ -15,16 +15,25 @@ const initializeCsrf = async (): Promise<void> => {
     const baseUrl = API_BASE_URL.replace('/api', '');
     console.log('Initializing CSRF from:', `${baseUrl}/sanctum/csrf-cookie`);
     
-    await fetch(`${baseUrl}/sanctum/csrf-cookie`, {
+    const csrfResponse = await fetch(`${baseUrl}/sanctum/csrf-cookie`, {
       method: 'GET',
       credentials: 'include',
       headers: {
         'Accept': 'application/json',
+        'Content-Type': 'application/json',
         'X-Requested-With': 'XMLHttpRequest',
       },
     });
-    csrfInitialized = true;
-    console.log('CSRF initialized successfully');
+    
+    console.log('CSRF Response status:', csrfResponse.status);
+    console.log('CSRF Response headers:', Object.fromEntries(csrfResponse.headers.entries()));
+    
+    if (csrfResponse.ok) {
+      csrfInitialized = true;
+      console.log('CSRF initialized successfully');
+    } else {
+      console.warn('CSRF initialization failed with status:', csrfResponse.status);
+    }
   } catch (error) {
     console.error('Failed to initialize CSRF:', error);
     // Don't throw error, let the auth request proceed
@@ -91,12 +100,20 @@ const apiRequest = async <T>(endpoint: string, options?: RequestInit): Promise<T
   } catch (error) {
     console.error('API request failed:', error);
     
-    // Provide more specific error messages
-    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-      throw new Error('Cannot connect to server. Please ensure your Laravel backend is running on http://localhost:8000 and CORS is properly configured.');
+    // Provide more specific error messages based on error type
+    if (error instanceof TypeError) {
+      if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+        throw new Error('Cannot connect to server. Please ensure:\n• Your Laravel backend is running on http://localhost:8000\n• CORS is properly configured in your Laravel app\n• No firewall is blocking the connection\n• The backend routes are properly set up');
+      }
     }
     
-    throw error;
+    // If it's already a formatted error, re-throw it
+    if (error instanceof Error) {
+      throw error;
+    }
+    
+    // Fallback for unknown errors
+    throw new Error('An unexpected error occurred while connecting to the server');
   }
 };
 
