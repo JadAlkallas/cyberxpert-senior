@@ -1,4 +1,3 @@
-
 import { createContext, useState, useContext, ReactNode, useEffect } from "react";
 import { toast } from "@/components/ui/sonner";
 import { useNavigate } from "react-router-dom";
@@ -212,6 +211,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     role: UserRole,
     status: UserStatus
   ): Promise<boolean> => {
+    console.log("addDevAccount: Starting user creation process");
+    console.log("addDevAccount: Current user:", user);
+    console.log("addDevAccount: Current user role:", user?.role);
+    console.log("addDevAccount: Is current user admin?", user?.role?.toLowerCase() === "admin");
+    console.log("addDevAccount: Auth token:", localStorage.getItem("auth-token"));
+    console.log("addDevAccount: Request data:", { username, email, role, status });
+    
     const result = await createUserApi.execute({
       username,
       email,
@@ -220,11 +226,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       status
     });
     
+    console.log("addDevAccount: API response:", result);
+    
     if (result) {
       setAllUsers(prev => [...prev, result]);
+      console.log("addDevAccount: User created successfully");
       return true;
     }
     
+    console.log("addDevAccount: User creation failed");
     return false;
   };
   
@@ -289,3 +299,5 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 };
 
 export default AuthProvider;
+
+}

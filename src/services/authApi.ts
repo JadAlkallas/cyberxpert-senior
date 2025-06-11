@@ -89,10 +89,16 @@ export const authApi = {
 
   // Admin: Create user account
   createUser: async (data: CreateUserRequest): Promise<User> => {
-    return apiRequest('/admin/users', {
+    console.log("authApi.createUser: Making request with data:", data);
+    console.log("authApi.createUser: Current auth token:", localStorage.getItem("auth-token"));
+    
+    const result = await apiRequest<User>('/admin/users', {
       method: 'POST',
       body: JSON.stringify(data),
     });
+    
+    console.log("authApi.createUser: Response received:", result);
+    return result;
   },
 
   // Admin: Update user
