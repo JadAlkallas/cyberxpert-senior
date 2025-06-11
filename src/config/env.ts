@@ -9,7 +9,7 @@ export const ENV = {
   IS_PRODUCTION: import.meta.env.PROD,
   
   // Feature flags
-  ENABLE_MOCK_DATA: import.meta.env.VITE_ENABLE_MOCK_DATA === 'false', // Disable mock data by default
+  ENABLE_MOCK_DATA: import.meta.env.VITE_ENABLE_MOCK_DATA === 'true', // Enable mock data if backend is not available
   
   // App configuration
   APP_NAME: 'CyberXpert',

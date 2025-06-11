@@ -40,7 +40,16 @@ export const useApi = <T>(
       
       return result;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'An error occurred';
+      let errorMessage = 'An error occurred';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('NetworkError') || error.message.includes('fetch')) {
+          errorMessage = 'Unable to connect to server. Please check if the backend is running at http://localhost:8000';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       setState(prev => ({ ...prev, loading: false, error: errorMessage }));
       
       if (options?.showErrorToast !== false) {
