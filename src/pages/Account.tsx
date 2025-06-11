@@ -8,9 +8,9 @@ import Header from "@/components/layout/Header";
 import Sidebar from "@/components/layout/Sidebar";
 import { useAuth } from "@/context/AuthContext";
 import { useData } from "@/context/DataContext";
-import AnalyticsChart from "@/components/dashboard/AnalyticsChart";
 import { toast } from "@/components/ui/sonner";
 import { Loader, User } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 
 const Account = () => {
   const { user, updateUserProfile } = useAuth();
@@ -119,27 +119,59 @@ const Account = () => {
               <TabsContent value="dashboard" className="space-y-6">
                 {/* Analytics Dashboard */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <AnalyticsChart 
-                    data={analyticsData} 
-                    type="bar" 
-                    dataKey="testsOverTime" 
-                    title="Tests Over Time"
-                  />
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm font-medium">Tests Over Time</CardTitle>
+                      <CardDescription>Your recent testing activity</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {analyticsData?.testsOverTime?.map((item: any, index: number) => (
+                          <div key={index} className="flex justify-between items-center">
+                            <span className="text-sm">{item.name}</span>
+                            <span className="font-medium">{item.tests}</span>
+                          </div>
+                        )) || <p className="text-gray-500">No test data available</p>}
+                      </div>
+                    </CardContent>
+                  </Card>
                   
-                  <AnalyticsChart 
-                    data={analyticsData} 
-                    type="pie" 
-                    dataKey="scoreDistribution" 
-                    title="Score Distribution"
-                  />
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm font-medium">Score Distribution</CardTitle>
+                      <CardDescription>Your security scores breakdown</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {analyticsData?.scoreDistribution?.map((item: any, index: number) => (
+                          <div key={index} className="space-y-2">
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm">{item.range}</span>
+                              <span className="font-medium">{item.count}</span>
+                            </div>
+                            <Progress value={(item.count / 10) * 100} className="h-2" />
+                          </div>
+                        )) || <p className="text-gray-500">No score data available</p>}
+                      </div>
+                    </CardContent>
+                  </Card>
                   
-                  <AnalyticsChart 
-                    data={analyticsData} 
-                    type="bar" 
-                    dataKey="vulnerabilityCategories" 
-                    title="Vulnerability Categories"
-                    height={350}
-                  />
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm font-medium">Vulnerability Categories</CardTitle>
+                      <CardDescription>Types of issues found</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {analyticsData?.vulnerabilityCategories?.map((item: any, index: number) => (
+                          <div key={index} className="flex justify-between items-center">
+                            <span className="text-sm">{item.category}</span>
+                            <span className="font-medium">{item.count}</span>
+                          </div>
+                        )) || <p className="text-gray-500">No vulnerability data available</p>}
+                      </div>
+                    </CardContent>
+                  </Card>
                   
                   <Card>
                     <CardHeader>
@@ -150,28 +182,23 @@ const Account = () => {
                       <div className="space-y-4">
                         <div className="flex justify-between items-center">
                           <span className="text-sm">Total Tests Run</span>
-                          <span className="font-medium">{analyticsData.totalTests}</span>
+                          <span className="font-medium">{analyticsData?.totalTests || 0}</span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-sm">Average Security Score</span>
-                          <span className="font-medium">{analyticsData.averageScore}%</span>
+                          <span className="font-medium">{analyticsData?.averageScore || 0}%</span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-sm">Critical Issues Detected</span>
-                          <span className="font-medium text-red-600">{analyticsData.criticalIssues}</span>
+                          <span className="font-medium text-red-600">{analyticsData?.criticalIssues || 0}</span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-sm">Issues Resolved</span>
-                          <span className="font-medium text-green-600">{analyticsData.resolvedIssues}</span>
+                          <span className="font-medium text-green-600">{analyticsData?.resolvedIssues || 0}</span>
                         </div>
                         <div className="border-t pt-4 mt-4">
                           <div className="text-sm font-medium mb-2">Security Trend</div>
-                          <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                            <div 
-                              className="h-full bg-cyber-orange rounded-full"
-                              style={{ width: `${analyticsData.averageScore}%` }}
-                            ></div>
-                          </div>
+                          <Progress value={analyticsData?.averageScore || 0} className="h-2" />
                           <div className="flex justify-between mt-1 text-xs text-gray-500">
                             <span>0%</span>
                             <span>50%</span>
