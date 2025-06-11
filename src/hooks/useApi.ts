@@ -53,6 +53,9 @@ export const useApi = <T>(
           errorMessage = 'Cannot connect to backend server. Please check:\n• Laravel server is running on http://localhost:8000\n• CORS is properly configured\n• No firewall blocking the connection';
         } else if (error.message.includes('CORS')) {
           errorMessage = 'CORS error: Please configure your Laravel backend to allow requests from this domain.';
+        } else if (error.message.includes('Validation failed')) {
+          // Handle validation errors specifically
+          errorMessage = 'Validation failed. Please check the Laravel logs for specific field errors. Common issues:\n• Username may need to be unique\n• Email format validation\n• Password length requirements\n• Missing required fields';
         } else {
           errorMessage = error.message;
         }

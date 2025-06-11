@@ -43,6 +43,7 @@ const initializeCsrf = async (): Promise<void> => {
 // API request helper
 const apiRequest = async <T>(endpoint: string, options?: RequestInit): Promise<T> => {
   console.log('Making API request to:', `${API_BASE_URL}${endpoint}`);
+  console.log('Request payload:', options?.body);
   
   // Initialize CSRF for authentication endpoints
   if (endpoint.includes('/auth/') && !csrfInitialized) {
@@ -85,8 +86,18 @@ const apiRequest = async <T>(endpoint: string, options?: RequestInit): Promise<T
       
       try {
         const errorData = await response.json();
-        errorMessage = errorData.message || errorMessage;
         console.error('API Error response:', errorData);
+        
+        // Handle Laravel validation errors specifically
+        if (response.status === 422 && errorData.errors) {
+          const validationErrors = Object.entries(errorData.errors)
+            .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
+            .join('\n');
+          
+          errorMessage = `Validation failed:\n${validationErrors}`;
+        } else {
+          errorMessage = errorData.message || errorMessage;
+        }
       } catch (parseError) {
         console.error('Error parsing error response:', parseError);
       }
