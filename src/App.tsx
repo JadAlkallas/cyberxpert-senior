@@ -4,7 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProviderComponent } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "@/context/AuthContext";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { DataProvider } from "@/context/DataContext";
 
 // Pages
@@ -24,10 +24,12 @@ const queryClient = new QueryClient();
 
 // Protected route wrapper
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  // Check for authentication in localStorage since we don't have a real backend
-  const isAuthenticated = localStorage.getItem("cyberxpert-user") !== null;
+  const { user, isAuthenticated } = useAuth();
   
-  if (!isAuthenticated) {
+  console.log("ProtectedRoute: user", user);
+  console.log("ProtectedRoute: isAuthenticated", isAuthenticated);
+  
+  if (!user) {
     return <Navigate to="/login" />;
   }
   
@@ -36,16 +38,51 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 // Admin route wrapper
 const AdminRoute = ({ children }: { children: React.ReactNode }) => {
-  // Check for authentication and role
-  const userData = localStorage.getItem("cyberxpert-user");
-  const isAdmin = userData ? JSON.parse(userData).role === "admin" : false;
+  const { user } = useAuth();
   
-  if (!isAdmin) {
+  console.log("AdminRoute: user", user);
+  console.log("AdminRoute: user role", user?.role);
+  console.log("AdminRoute: is admin?", user?.role?.toLowerCase() === "admin");
+  
+  if (!user) {
+    return <Navigate to="/login" />;
+  }
+  
+  if (user.role?.toLowerCase() !== "admin") {
+    console.log("AdminRoute: Not admin, redirecting to home");
     return <Navigate to="/home" />;
   }
   
+  console.log("AdminRoute: Admin confirmed, rendering children");
   return <>{children}</>;
 };
+
+const AppRoutes = () => (
+  <Routes>
+    <Route path="/" element={<Landing />} />
+    <Route path="/login" element={<Login />} />
+    <Route path="/signup" element={<Signup />} />
+    
+    {/* Protected routes */}
+    <Route path="/action" element={<ProtectedRoute><Action /></ProtectedRoute>} />
+    <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+    <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
+    <Route path="/repository" element={<ProtectedRoute><Repository /></ProtectedRoute>} />
+    <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+    <Route path="/chatbot" element={<ProtectedRoute><Chatbot /></ProtectedRoute>} />
+    
+    {/* Admin routes */}
+    <Route path="/admin/users" element={
+      <ProtectedRoute>
+        <AdminRoute>
+          <AdminUsers />
+        </AdminRoute>
+      </ProtectedRoute>
+    } />
+    
+    <Route path="*" element={<NotFound />} />
+  </Routes>
+);
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -55,24 +92,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <DataProvider>
-            <Routes>
-              <Route path="/" element={<Landing />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/signup" element={<Signup />} />
-              
-              {/* Protected routes */}
-              <Route path="/action" element={<ProtectedRoute><Action /></ProtectedRoute>} />
-              <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-              <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
-              <Route path="/repository" element={<ProtectedRoute><Repository /></ProtectedRoute>} />
-              <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
-              <Route path="/chatbot" element={<ProtectedRoute><Chatbot /></ProtectedRoute>} />
-              
-              {/* Admin routes */}
-              <Route path="/admin/users" element={<ProtectedRoute><AdminRoute><AdminUsers /></AdminRoute></ProtectedRoute>} />
-              
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <AppRoutes />
           </DataProvider>
         </AuthProvider>
       </BrowserRouter>

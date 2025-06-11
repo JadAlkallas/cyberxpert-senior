@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Header from "@/components/layout/Header";
 import Sidebar from "@/components/layout/Sidebar";
 import { useAuth } from "@/context/AuthContext";
@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Shield, User, UserPlus, UserX, UserCheck } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -46,7 +45,6 @@ const AdminUsers = () => {
     deleteDevAccount,
     updateDevStatus
   } = useAuth();
-  const navigate = useNavigate();
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const form = useForm<AccountFormValues>({
@@ -65,25 +63,7 @@ const AdminUsers = () => {
   console.log("AdminUsers: Current user:", user);
   console.log("AdminUsers: User role:", user?.role);
   console.log("AdminUsers: Is admin?", user?.role?.toLowerCase() === "admin");
-
-  // Check if user is admin - redirect if not
-  useEffect(() => {
-    if (user && user.role?.toLowerCase() !== "admin") {
-      console.log("AdminUsers: User is not admin, redirecting to home");
-      navigate("/home");
-    }
-  }, [user, navigate]);
-
-  // Don't render anything if not authenticated or not admin
-  if (!user) {
-    console.log("AdminUsers: No user found, returning null");
-    return null;
-  }
-  
-  if (user.role?.toLowerCase() !== "admin") {
-    console.log("AdminUsers: User is not admin, returning null");
-    return null;
-  }
+  console.log("AdminUsers: Rendering admin panel");
   
   const handleDelete = async (userId: string) => {
     if (confirm("Are you sure you want to delete this user?")) {
@@ -112,8 +92,6 @@ const AdminUsers = () => {
     }
     setIsSubmitting(false);
   };
-  
-  console.log("AdminUsers: Rendering admin panel");
   
   return (
     <div className="min-h-screen flex flex-col">
