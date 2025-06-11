@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import Header from "@/components/layout/Header";
 import Sidebar from "@/components/layout/Sidebar";
@@ -31,7 +30,7 @@ const accountSchema = z.object({
     message: "Password must be at least 6 characters"
   }),
   confirmPassword: z.string(),
-  role: z.enum(["Dev", "Admin"]),
+  role: z.enum(["dev", "admin"]),
   status: z.enum(["active", "suspended"])
 }).refine(data => data.password === data.confirmPassword, {
   message: "Passwords do not match",
@@ -57,13 +56,13 @@ const AdminUsers = () => {
       email: "",
       password: "",
       confirmPassword: "",
-      role: "Dev",
+      role: "dev",
       status: "active"
     }
   });
 
   // Redirect if not an admin
-  if (user?.role !== "Admin") {
+  if (user?.role !== "admin") {
     navigate("/home");
     return null;
   }
@@ -141,7 +140,7 @@ const AdminUsers = () => {
                               <TableCell>{user.email}</TableCell>
                               <TableCell>
                                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                  {user.role === "Dev" ? <User className="h-3.5 w-3.5 mr-1" /> : <Shield className="h-3.5 w-3.5 mr-1" />}
+                                  {user.role === "dev" ? <User className="h-3.5 w-3.5 mr-1" /> : <Shield className="h-3.5 w-3.5 mr-1" />}
                                   {user.role}
                                 </span>
                               </TableCell>
@@ -231,14 +230,14 @@ const AdminUsers = () => {
                               <FormControl>
                                 <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex space-x-4">
                                   <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="Dev" id="role-dev" />
+                                    <RadioGroupItem value="dev" id="role-dev" />
                                     <Label htmlFor="role-dev" className="flex items-center">
                                       <User className="h-4 w-4 mr-2" />
                                       Developer
                                     </Label>
                                   </div>
                                   <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="Admin" id="role-admin" />
+                                    <RadioGroupItem value="admin" id="role-admin" />
                                     <Label htmlFor="role-admin" className="flex items-center">
                                       <Shield className="h-4 w-4 mr-2" />
                                       Administrator

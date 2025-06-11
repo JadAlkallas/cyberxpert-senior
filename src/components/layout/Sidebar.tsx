@@ -17,11 +17,11 @@ const Sidebar = () => {
   if (!user) return null;
   
   // Get pending users count for notification badge
-  const pendingUsersCount = user.role === "Admin" ? 
+  const pendingUsersCount = user.role === "admin" ? 
     JSON.parse(localStorage.getItem("cyberxpert-pending-users") || "[]").length : 0;
   
   // Get unread reports count
-  const unreadReportsCount = user.role === "Admin" ? 
+  const unreadReportsCount = user.role === "admin" ? 
     reports.filter(report => !report.read).length : 0;
   
   const menuItems = [
@@ -32,13 +32,13 @@ const Sidebar = () => {
       name: "Reports", 
       path: "/reports", 
       icon: <PieChart className="h-5 w-5" />,
-      badge: user.role === "Admin" && unreadReportsCount > 0 ? unreadReportsCount : null 
+      badge: user.role === "admin" && unreadReportsCount > 0 ? unreadReportsCount : null 
     },
     { name: "Chatbot", path: "/chatbot", icon: <MessageSquare className="h-5 w-5" /> },
   ];
   
   // Add admin-only menu items
-  if (user.role === "Admin") {
+  if (user.role === "admin") {
     menuItems.push({ 
       name: "User Management", 
       path: "/admin/users", 
