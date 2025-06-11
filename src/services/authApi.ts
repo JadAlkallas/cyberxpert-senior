@@ -1,4 +1,3 @@
-
 import { apiRequest } from './api';
 import { User, UserRole, UserStatus } from '@/context/AuthContext';
 
@@ -90,16 +89,37 @@ export const authApi = {
 
   // Admin: Create user account - Updated to match backend validation
   createUser: async (data: CreateUserRequest): Promise<User> => {
-    console.log("authApi.createUser: Making request with data:", data);
-    console.log("authApi.createUser: Current auth token:", localStorage.getItem("auth-token"));
+    console.log("=== AUTH API CREATE USER DEBUG ===");
+    console.log("Request data:", data);
+    console.log("Current auth token:", localStorage.getItem("auth-token"));
+    console.log("Making request to: /admin/users");
     
-    const result = await apiRequest<User>('/admin/users', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-    
-    console.log("authApi.createUser: Response received:", result);
-    return result;
+    try {
+      const result = await apiRequest<User>('/admin/users', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      
+      console.log("Create user API response:", result);
+      return result;
+    } catch (error) {
+      console.error("Create user API error:", error);
+      
+      // Log additional details about the error
+      if (error instanceof Error) {
+        console.error("Error message:", error.message);
+        if (error.message.includes("403") || error.message.includes("Unauthorized")) {
+          console.error("This is an authorization error. The backend is rejecting the request.");
+          console.error("Possible causes:");
+          console.error("1. Token is invalid or expired");
+          console.error("2. User doesn't have admin role on the backend");
+          console.error("3. Backend role validation is case-sensitive");
+          console.error("4. CSRF token issues");
+        }
+      }
+      
+      throw error;
+    }
   },
 
   // Admin: Update user

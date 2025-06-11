@@ -1,4 +1,3 @@
-
 import { createContext, useState, useContext, ReactNode, useEffect } from "react";
 import { toast } from "@/components/ui/sonner";
 import { useNavigate } from "react-router-dom";
@@ -218,12 +217,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     role: UserRole,
     status: UserStatus
   ): Promise<boolean> => {
-    console.log("addDevAccount: Starting user creation process");
-    console.log("addDevAccount: Current user:", user);
-    console.log("addDevAccount: Current user role:", user?.role);
-    console.log("addDevAccount: Is current user admin?", isUserAdmin(user?.role || ''));
-    console.log("addDevAccount: Auth token:", localStorage.getItem("auth-token"));
-    console.log("addDevAccount: Request data:", { username, email, role, status });
+    console.log("=== ADD DEV ACCOUNT DEBUG INFO ===");
+    console.log("Current user:", user);
+    console.log("Current user role:", user?.role);
+    console.log("Is current user admin?", isUserAdmin(user?.role || ''));
+    console.log("Auth token exists:", !!localStorage.getItem("auth-token"));
+    console.log("Auth token:", localStorage.getItem("auth-token"));
+    console.log("Request data:", { username, email, role, status });
+    
+    // Additional validation - check if user is actually admin
+    if (!user) {
+      console.error("No user found in context");
+      toast.error("Authentication error: No user found");
+      return false;
+    }
+    
+    if (!isUserAdmin(user.role)) {
+      console.error("User is not admin. Role:", user.role);
+      toast.error("Access denied: Admin privileges required");
+      return false;
+    }
+    
+    const token = localStorage.getItem("auth-token");
+    if (!token) {
+      console.error("No auth token found");
+      toast.error("Authentication error: Please log in again");
+      return false;
+    }
+    
+    console.log("All validation passed, making API call...");
     
     const result = await createUserApi.execute({
       username,
@@ -233,15 +255,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       status
     });
     
-    console.log("addDevAccount: API response:", result);
+    console.log("API response:", result);
     
     if (result) {
       setAllUsers(prev => [...prev, result]);
-      console.log("addDevAccount: User created successfully");
+      console.log("User created successfully");
       return true;
     }
     
-    console.log("addDevAccount: User creation failed");
+    console.log("User creation failed");
     return false;
   };
   
