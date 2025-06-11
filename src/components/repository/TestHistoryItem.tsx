@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { TestHistoryItem as TestHistoryItemType } from "@/context/DataContext";
@@ -229,9 +230,9 @@ const TestHistoryItem = ({ test, showCreator = false }: TestHistoryItemProps) =>
                           <div className="flex items-center gap-2">
                             <span className={cn(
                               "px-2 py-0.5 text-xs rounded-full",
-                              vulnerability.severity === 'critical' ? 'bg-red-100 text-red-800' :
-                              vulnerability.severity === 'high' ? 'bg-orange-100 text-orange-800' :
-                              vulnerability.severity === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                              vulnerability.severity === 'Critical' ? 'bg-red-100 text-red-800' :
+                              vulnerability.severity === 'High' ? 'bg-orange-100 text-orange-800' :
+                              vulnerability.severity === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
                               'bg-blue-100 text-blue-800'
                             )}>
                               {vulnerability.severity}

@@ -8,7 +8,7 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import Sidebar from "@/components/layout/Sidebar";
 
 const Action = () => {
-  const { startAnalysis, isLoading } = useData();
+  const { startAnalysis, isAnalyzing } = useData();
   const [animationActive, setAnimationActive] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
   const navigate = useNavigate();
@@ -25,14 +25,19 @@ const Action = () => {
   const handleStartAnalysis = async () => {
     setAnimationActive(true);
     
-    const success = await startAnalysis();
-    
-    if (success) {
-      // Wait just a bit to show the animation
-      setTimeout(() => {
-        navigate("/reports");
-      }, 1000);
-    } else {
+    try {
+      const success = await startAnalysis();
+      
+      if (success) {
+        // Wait just a bit to show the animation
+        setTimeout(() => {
+          navigate("/reports");
+        }, 1000);
+      } else {
+        setAnimationActive(false);
+      }
+    } catch (error) {
+      console.error('Analysis failed:', error);
       setAnimationActive(false);
     }
   };
@@ -83,9 +88,9 @@ const Action = () => {
                   ${animationActive ? 'animate-pulse-glow' : ''}
                 `}
                 onClick={handleStartAnalysis}
-                disabled={isLoading || animationActive}
+                disabled={isAnalyzing || animationActive}
               >
-                {isLoading ? (
+                {isAnalyzing ? (
                   <div className="flex items-center gap-2">
                     <LoadingSpinner size="sm" />
                     <span>Processing...</span>
@@ -95,7 +100,7 @@ const Action = () => {
                 )}
               </Button>
               
-              {isLoading && (
+              {isAnalyzing && (
                 <div className="cyber-container absolute inset-0 flex items-center justify-center">
                   <div className="absolute inset-0 rounded-md animate-cyber-loading"></div>
                   
@@ -122,7 +127,7 @@ const Action = () => {
               )}
             </div>
             
-            {isLoading && (
+            {isAnalyzing && (
               <p className="mt-8 text-gray-300 animate-pulse">
                 Scanning application components... This may take a moment.
               </p>
