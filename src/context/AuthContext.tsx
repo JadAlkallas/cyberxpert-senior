@@ -1,3 +1,4 @@
+
 import { createContext, useState, useContext, ReactNode, useEffect } from "react";
 import { toast } from "@/components/ui/sonner";
 import { useNavigate } from "react-router-dom";
@@ -305,5 +306,3 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 };
 
 export default AuthProvider;
-
-}
