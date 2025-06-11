@@ -1,90 +1,124 @@
 
-import { useState, useEffect } from "react";
 import Header from "@/components/layout/Header";
 import Sidebar from "@/components/layout/Sidebar";
-import { useData } from "@/context/DataContext";
-import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
-import TestHistoryItem from "@/components/repository/TestHistoryItem";
 import { useAuth } from "@/context/AuthContext";
+import { useData } from "@/context/DataContext";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import TestHistoryItem from "@/components/repository/TestHistoryItem";
+import { Database, Loader, RefreshCw } from "lucide-react";
+import { useState } from "react";
 
 const Repository = () => {
-  const { getUserVisibleTests, testHistory } = useData();
   const { user } = useAuth();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filteredTests, setFilteredTests] = useState(getUserVisibleTests());
+  const { testHistory, refreshData } = useData();
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
-  const isAdmin = user?.role === "Admin";
-  const visibleTests = getUserVisibleTests();
+  // Filter test history based on user role
+  const userTests = user?.role === "admin" 
+    ? testHistory 
+    : testHistory.filter(test => test.createdBy?.id === user?.id);
   
-  // Filter tests based on search term
-  useEffect(() => {
-    const filtered = visibleTests.filter(test => 
-      test.id.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      (isAdmin && test.createdBy?.username.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
-    setFilteredTests(filtered);
-  }, [searchTerm, visibleTests, isAdmin]);
+  const completedTests = userTests.filter(test => test.status === "completed").length;
+  const failedTests = userTests.filter(test => test.status === "failed").length;
+  
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    refreshData();
+    // Simulate API call delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    setIsRefreshing(false);
+  };
   
   return (
-    <div className="min-h-screen flex flex-col">
-      <Header />
+    <div className="min-h-screen bg-gray-50 flex">
+      <Sidebar />
       
-      <div className="flex-1 flex">
-        <Sidebar />
+      <div className="flex-1 flex flex-col">
+        <Header />
         
-        <main className="flex-1 bg-gray-50 p-6">
-          <div className="container mx-auto">
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold mb-2">Test Repository</h1>
-              <p className="text-gray-600">View historical security tests and results</p>
-            </div>
-            
-            {/* Search */}
-            <div className="mb-6">
-              <div className="relative max-w-md">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder={isAdmin ? "Search tests by ID or username..." : "Search tests by ID..."}
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-            
-            {/* Test History List */}
-            <div className="space-y-4">
-              {filteredTests.length > 0 ? (
-                filteredTests.map(test => (
-                  <TestHistoryItem key={test.id} test={test} showCreator={isAdmin} />
-                ))
-              ) : (
-                <div className="bg-white rounded-lg p-8 text-center border">
-                  <div className="text-gray-400 mb-3">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-12 h-12 mx-auto">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25M9 16.5v.75m3-3v3M15 12v5.25m-4.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-                    </svg>
-                  </div>
-                  
-                  {visibleTests.length === 0 ? (
-                    <>
-                      <h3 className="text-xl font-medium mb-1">No tests found</h3>
-                      <p className="text-gray-500">
-                        Start an analysis to generate test results.
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <h3 className="text-xl font-medium mb-1">No matching tests</h3>
-                      <p className="text-gray-500">
-                        Try adjusting your search term.
-                      </p>
-                    </>
-                  )}
+        <main className="flex-1 p-6">
+          <div className="max-w-6xl mx-auto space-y-6">
+            {/* Header Section */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Database className="h-8 w-8 text-cyber-orange" />
+                <div>
+                  <h1 className="text-3xl font-bold text-gray-900">Test Repository</h1>
+                  <p className="text-gray-600">Security test history and results</p>
                 </div>
-              )}
+              </div>
+              
+              <Button 
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                variant="outline"
+              >
+                {isRefreshing ? (
+                  <Loader className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                )}
+                Refresh
+              </Button>
             </div>
+            
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Total Tests</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{userTests.length}</div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Completed</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-green-600">{completedTests}</div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Failed</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-red-600">{failedTests}</div>
+                </CardContent>
+              </Card>
+            </div>
+            
+            {/* Test History */}
+            {userTests.length > 0 ? (
+              <div className="space-y-4">
+                {userTests.map((test) => (
+                  <TestHistoryItem key={test.id} test={test} />
+                ))}
+              </div>
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle>No Tests Available</CardTitle>
+                  <CardDescription>
+                    No security tests have been run yet. Start a security analysis to see results here.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center py-12">
+                    <Database className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-500">
+                      Your security test history will appear here once you run analyses.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </main>
       </div>

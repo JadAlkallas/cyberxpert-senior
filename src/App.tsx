@@ -38,7 +38,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   // Check for authentication and role
   const userData = localStorage.getItem("cyberxpert-user");
-  const isAdmin = userData ? JSON.parse(userData).role === "Admin" : false;
+  const isAdmin = userData ? JSON.parse(userData).role === "admin" : false;
   
   if (!isAdmin) {
     return <Navigate to="/home" />;

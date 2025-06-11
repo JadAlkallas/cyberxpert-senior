@@ -1,18 +1,15 @@
 import { createContext, useState, useContext, ReactNode, useEffect } from "react";
-import { toast } from "@/components/ui/sonner";
-import { useAuth } from "./AuthContext";
-import { securityApi } from "@/services/securityApi";
-import { useApi } from "@/hooks/useApi";
+import { User } from "@/context/AuthContext";
 
-// Vulnerability detail type
 export interface VulnerabilityDetail {
+  component: string;
   type: string;
+  severity: "Critical" | "High" | "Medium" | "Low";
   description: string;
-  severity: 'critical' | 'high' | 'medium' | 'low';
-  status?: 'fixed' | 'in_progress' | 'not_addressed';
+  solution: string;
+  cveId?: string;
 }
 
-// Test history item type
 export interface TestHistoryItem {
   id: string;
   date: string;
@@ -33,7 +30,6 @@ export interface TestHistoryItem {
   };
 }
 
-// Report item type
 export interface ReportItem {
   id: string;
   date: string;
@@ -53,35 +49,46 @@ export interface ReportItem {
   };
 }
 
-// Analytics data type
 export interface AnalyticsData {
-  totalTests: number;
-  averageScore: number;
-  criticalIssues: number;
-  resolvedIssues: number;
-  testsOverTime: { date: string; count: number }[];
-  scoreDistribution: { range: string; count: number }[];
-  vulnerabilityCategories: { category: string; count: number }[];
+  score: number;
+  vulnerabilities: {
+    critical: number;
+    high: number;
+    medium: number;
+    low: number;
+  };
+  testsRun: number;
+  lastScan: string;
+  trend: "up" | "down" | "stable";
+  monthlyData: Array<{
+    month: string;
+    score: number;
+    vulnerabilities: number;
+  }>;
 }
 
 interface DataContextType {
   testHistory: TestHistoryItem[];
   reports: ReportItem[];
-  analyticsData: AnalyticsData;
-  isLoading: boolean;
-  startAnalysis: () => Promise<boolean>;
-  getTestById: (id: string) => TestHistoryItem | undefined;
-  getReportById: (id: string) => ReportItem | undefined;
-  getUserVisibleTests: () => TestHistoryItem[];
-  getUserVisibleReports: () => ReportItem[];
-  refreshData: () => Promise<void>;
+  analytics: AnalyticsData;
+  isAnalyzing: boolean;
+  currentAnalysis: {
+    progress: number;
+    status: string;
+    testId?: string;
+  } | null;
+  startAnalysis: () => Promise<void>;
+  addTestResult: (result: TestHistoryItem) => void;
+  addReport: (report: ReportItem) => void;
+  markReportAsRead: (reportId: string) => void;
+  deleteTest: (testId: string) => void;
   solveVulnerabilities: (testId: string) => Promise<boolean>;
+  generateDetailedReport: (testId: string) => Promise<boolean>;
+  refreshData: () => void;
 }
 
-// Create the context
 const DataContext = createContext<DataContextType | null>(null);
 
-// Create a hook to use the data context
 export const useData = () => {
   const context = useContext(DataContext);
   if (!context) {
@@ -90,398 +97,338 @@ export const useData = () => {
   return context;
 };
 
-// Common vulnerability types
-const vulnerabilityTypes = [
-  {
-    type: "Authentication Bypass",
-    description: "Vulnerability allowing users to bypass authentication mechanisms",
-    severity: 'critical'
-  },
-  {
-    type: "SQL Injection",
-    description: "Ability to inject malicious SQL code that could manipulate database operations",
-    severity: 'high'
-  },
-  {
-    type: "Cross-Site Scripting (XSS)",
-    description: "Injection of client-side scripts into web pages viewed by other users",
-    severity: 'high'
-  },
-  {
-    type: "Insecure Dependencies",
-    description: "Use of third-party libraries with known security vulnerabilities",
-    severity: 'medium'
-  },
-  {
-    type: "API Exposure",
-    description: "Sensitive API endpoints exposed without proper authorization",
-    severity: 'medium'
-  },
-  {
-    type: "Weak Encryption",
-    description: "Use of weak or outdated encryption algorithms for sensitive data",
-    severity: 'high'
-  },
-  {
-    type: "Access Control Flaws",
-    description: "Improper implementation of access controls allowing unauthorized actions",
-    severity: 'medium'
-  },
-  {
-    type: "CSRF Vulnerability",
-    description: "Cross-Site Request Forgery allowing attackers to perform actions as authenticated users",
-    severity: 'medium'
-  },
-  {
-    type: "File Upload Vulnerability",
-    description: "Insecure file upload implementation that could allow malicious files",
-    severity: 'medium'
-  },
-  {
-    type: "Server Misconfiguration",
-    description: "Server settings that expose security vulnerabilities or sensitive information",
-    severity: 'low'
-  }
-] as const;
+// Utility function to generate random vulnerabilities
+const generateRandomVulnerabilities = (): VulnerabilityDetail[] => {
+  const severities: ("Critical" | "High" | "Medium" | "Low")[] = ["Critical", "High", "Medium", "Low"];
+  const components = ["Auth Module", "Payment Gateway", "Data Storage", "API Endpoint"];
+  const types = ["XSS", "SQL Injection", "CSRF", "Authentication Bypass"];
 
-// Initial mock data with vulnerability details
-const initialTestHistory: TestHistoryItem[] = [
+  return Array.from({ length: Math.floor(Math.random() * 5) + 1 }, () => ({
+    component: components[Math.floor(Math.random() * components.length)],
+    type: types[Math.floor(Math.random() * types.length)],
+    severity: severities[Math.floor(Math.random() * severities.length)],
+    description: "A randomly generated vulnerability description.",
+    solution: "Implement the suggested fix to mitigate this vulnerability.",
+    cveId: `CVE-${Math.floor(Math.random() * 9999)}-${Math.floor(Math.random() * 99999)}`
+  }));
+};
+
+// Mock data for initial states
+const mockTestHistory: TestHistoryItem[] = [
   {
-    id: "test-001",
-    date: "2025-05-01",
-    time: "09:30 AM",
+    id: "test-1",
+    date: "2024-01-20",
+    time: "14:30",
     status: "completed",
-    createdBy: {
-      id: "dev-1",
-      username: "developer1"
-    },
     details: {
-      duration: "3m 24s",
-      components: 42,
-      vulnerabilities: 7,
-      score: 78,
-      vulnerabilityDetails: [
-        { ...vulnerabilityTypes[0], status: 'not_addressed' },
-        { ...vulnerabilityTypes[1], status: 'not_addressed' },
-        { ...vulnerabilityTypes[3], status: 'not_addressed' },
-        { ...vulnerabilityTypes[4], status: 'not_addressed' },
-        { ...vulnerabilityTypes[7], status: 'not_addressed' },
-        { ...vulnerabilityTypes[8], status: 'not_addressed' },
-        { ...vulnerabilityTypes[9], status: 'not_addressed' }
-      ]
-    }
-  },
-  {
-    id: "test-002",
-    date: "2025-05-02",
-    time: "02:15 PM",
-    status: "completed",
-    createdBy: {
-      id: "dev-2",
-      username: "developer2"
-    },
-    details: {
-      duration: "2m 58s",
-      components: 38,
-      vulnerabilities: 5,
+      duration: "25 minutes",
+      components: 32,
+      vulnerabilities: 8,
       score: 85,
-      vulnerabilityDetails: [
-        { ...vulnerabilityTypes[2], status: 'not_addressed' },
-        { ...vulnerabilityTypes[3], status: 'not_addressed' },
-        { ...vulnerabilityTypes[5], status: 'not_addressed' },
-        { ...vulnerabilityTypes[8], status: 'not_addressed' },
-        { ...vulnerabilityTypes[9], status: 'not_addressed' }
-      ]
+      vulnerabilityDetails: generateRandomVulnerabilities()
     }
   },
   {
-    id: "test-003",
-    date: "2025-05-04",
-    time: "11:45 AM",
+    id: "test-2",
+    date: "2024-01-15",
+    time: "09:15",
     status: "failed",
-    createdBy: {
-      id: "dev-1",
-      username: "developer1"
-    },
     details: {
-      duration: "0m 47s",
-      components: 12,
-      vulnerabilities: 0,
-      score: 0
+      duration: "18 minutes",
+      components: 25,
+      vulnerabilities: 15,
+      score: 60,
+      vulnerabilityDetails: generateRandomVulnerabilities()
     }
   }
 ];
 
-const initialReports: ReportItem[] = [
+const mockReports: ReportItem[] = [
   {
-    id: "report-001",
-    date: "2025-05-01",
-    time: "09:34 AM",
+    id: "report-1",
+    date: "2024-01-22",
+    time: "10:00",
     read: false,
-    createdBy: {
-      id: "dev-1",
-      username: "developer1"
-    },
     securityPosture: {
-      score: 78,
+      score: 88,
       criticalIssues: 1,
       highIssues: 2,
       mediumIssues: 3,
-      lowIssues: 1,
-      details: "Authentication vulnerability detected in login component. Cross-site scripting risk in form validation."
+      lowIssues: 2,
+      details: "Overall good security posture with minor issues to address."
     }
   },
   {
-    id: "report-002",
-    date: "2025-05-02",
-    time: "02:18 PM",
-    read: false,
-    createdBy: {
-      id: "dev-2",
-      username: "developer2"
-    },
+    id: "report-2",
+    date: "2024-01-18",
+    time: "16:45",
+    read: true,
     securityPosture: {
-      score: 85,
+      score: 72,
       criticalIssues: 0,
-      highIssues: 2,
-      mediumIssues: 2,
-      lowIssues: 1,
-      details: "Possible SQL injection vulnerability in search function. Outdated library dependencies with known security issues."
+      highIssues: 3,
+      mediumIssues: 5,
+      lowIssues: 4,
+      details: "Requires attention to medium and high severity vulnerabilities."
     }
   }
 ];
 
-const initialAnalyticsData: AnalyticsData = {
-  totalTests: 5,
-  averageScore: 82,
-  criticalIssues: 1,
-  resolvedIssues: 3,
-  testsOverTime: [
-    { date: "Apr 28", count: 1 },
-    { date: "Apr 29", count: 0 },
-    { date: "Apr 30", count: 1 },
-    { date: "May 1", count: 1 },
-    { date: "May 2", count: 1 },
-    { date: "May 3", count: 0 },
-    { date: "May 4", count: 1 }
-  ],
-  scoreDistribution: [
-    { range: "0-25", count: 0 },
-    { range: "26-50", count: 0 },
-    { range: "51-75", count: 1 },
-    { range: "76-100", count: 4 }
-  ],
-  vulnerabilityCategories: [
-    { category: "Authentication", count: 2 },
-    { category: "Injection", count: 3 },
-    { category: "XSS", count: 2 },
-    { category: "Dependencies", count: 4 },
-    { category: "Configuration", count: 1 }
+const mockAnalytics: AnalyticsData = {
+  score: 82,
+  vulnerabilities: {
+    critical: 2,
+    high: 5,
+    medium: 8,
+    low: 6
+  },
+  testsRun: 15,
+  lastScan: "2024-01-25T14:00:00Z",
+  trend: "up",
+  monthlyData: [
+    { month: "Jan", score: 78, vulnerabilities: 21 },
+    { month: "Feb", score: 82, vulnerabilities: 18 },
+    { month: "Mar", score: 85, vulnerabilities: 15 }
   ]
 };
 
-// Create the data provider
 export const DataProvider = ({ children }: { children: ReactNode }) => {
-  const { user } = useAuth();
-  const [testHistory, setTestHistory] = useState<TestHistoryItem[]>(initialTestHistory);
-  const [reports, setReports] = useState<ReportItem[]>(initialReports);
-  const [analyticsData, setAnalyticsData] = useState<AnalyticsData>(initialAnalyticsData);
-  const [isLoading, setIsLoading] = useState(false);
-
-  // API hooks
-  const startAnalysisApi = useApi(securityApi.startAnalysis, {
-    showSuccessToast: true,
-    successMessage: "Analysis started successfully!"
+  const [testHistory, setTestHistory] = useState<TestHistoryItem[]>(() => {
+    const saved = localStorage.getItem("cyberxpert-test-history");
+    return saved ? JSON.parse(saved) : mockTestHistory;
   });
-
-  const getTestsApi = useApi(securityApi.getTests);
-  const getReportsApi = useApi(securityApi.getReports);
-  const getAnalyticsApi = useApi(securityApi.getAnalytics);
-  const solveVulnerabilitiesApi = useApi(securityApi.solveVulnerabilities, {
-    showSuccessToast: true,
-    successMessage: "Vulnerability analysis complete"
+  
+  const [reports, setReports] = useState<ReportItem[]>(() => {
+    const saved = localStorage.getItem("cyberxpert-reports");
+    return saved ? JSON.parse(saved) : mockReports;
   });
+  
+  const [analytics, setAnalytics] = useState<AnalyticsData>(() => {
+    const saved = localStorage.getItem("cyberxpert-analytics");
+    return saved ? JSON.parse(saved) : mockAnalytics;
+  });
+  
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [currentAnalysis, setCurrentAnalysis] = useState<{
+    progress: number;
+    status: string;
+    testId?: string;
+  } | null>(null);
 
-  // Load initial data when user changes
+  // Save to localStorage whenever data changes
   useEffect(() => {
-    if (user) {
-      refreshData();
-    } else {
-      // Clear data when user logs out
-      setTestHistory([]);
-      setReports([]);
-      setAnalyticsData({
-        totalTests: 0,
-        averageScore: 0,
-        criticalIssues: 0,
-        resolvedIssues: 0,
-        testsOverTime: [],
-        scoreDistribution: [],
-        vulnerabilityCategories: []
+    localStorage.setItem("cyberxpert-test-history", JSON.stringify(testHistory));
+  }, [testHistory]);
+
+  useEffect(() => {
+    localStorage.setItem("cyberxpert-reports", JSON.stringify(reports));
+  }, [reports]);
+
+  useEffect(() => {
+    localStorage.setItem("cyberxpert-analytics", JSON.stringify(analytics));
+  }, [analytics]);
+
+  const startAnalysis = async () => {
+    setIsAnalyzing(true);
+    setCurrentAnalysis({
+      progress: 0,
+      status: "Initializing security scan..."
+    });
+
+    const steps = [
+      "Scanning network topology...",
+      "Analyzing open ports...",
+      "Checking for known vulnerabilities...",
+      "Testing authentication mechanisms...",
+      "Evaluating encryption protocols...",
+      "Generating security report..."
+    ];
+
+    for (let i = 0; i < steps.length; i++) {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      setCurrentAnalysis({
+        progress: ((i + 1) / steps.length) * 100,
+        status: steps[i]
       });
     }
-  }, [user]);
 
-  // Refresh all data from API
-  const refreshData = async (): Promise<void> => {
-    if (!user) return;
-
-    try {
-      setIsLoading(true);
-
-      // Determine API parameters based on user role
-      const apiParams = user.role === 'Admin' ? {} : { userId: user.id };
-
-      // Fetch all data in parallel
-      const [testsData, reportsData, analyticsResult] = await Promise.all([
-        getTestsApi.execute(apiParams),
-        getReportsApi.execute(apiParams),
-        getAnalyticsApi.execute(user.role === 'Admin' ? undefined : user.id)
-      ]);
-
-      if (testsData) {
-        setTestHistory(testsData.tests);
+    // Generate a new test result
+    const newTest: TestHistoryItem = {
+      id: `test-${Date.now()}`,
+      date: new Date().toLocaleDateString(),
+      time: new Date().toLocaleTimeString(),
+      status: "completed",
+      details: {
+        duration: `${Math.floor(Math.random() * 30) + 10} minutes`,
+        components: Math.floor(Math.random() * 50) + 20,
+        vulnerabilities: Math.floor(Math.random() * 15) + 5,
+        score: Math.floor(Math.random() * 30) + 70,
+        vulnerabilityDetails: generateRandomVulnerabilities()
       }
+    };
 
-      if (reportsData) {
-        setReports(reportsData.reports);
-      }
-
-      if (analyticsResult) {
-        setAnalyticsData(analyticsResult);
-      }
-    } catch (error) {
-      console.error('Failed to refresh data:', error);
-      toast.error('Failed to load data');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Filter tests based on user role
-  const getUserVisibleTests = () => {
-    if (!user) return [];
-    
-    // Admin can see all tests
-    if (user.role === 'Admin') {
-      return testHistory;
-    }
-    
-    // Developers can only see their own tests
-    return testHistory.filter(test => test.createdBy?.id === user.id);
-  };
-  
-  // Filter reports based on user role
-  const getUserVisibleReports = () => {
-    if (!user) return [];
-    
-    // Admin can see all reports
-    if (user.role === 'Admin') {
-      return reports;
-    }
-    
-    // Developers can only see their own reports
-    return reports.filter(report => report.createdBy?.id === user.id);
-  };
-
-  // Start a new analysis
-  const startAnalysis = async (): Promise<boolean> => {
-    if (!user) {
-      toast.error('Please log in to start analysis');
-      return false;
-    }
-
-    try {
-      setIsLoading(true);
-      
-      const analysisRequest = {
-        userId: user.id,
-        analysisType: 'full' as const
+    // Get current user and add to test
+    const currentUser = localStorage.getItem("cyberxpert-user");
+    if (currentUser) {
+      const user: User = JSON.parse(currentUser);
+      newTest.createdBy = {
+        id: user.id,
+        username: user.username
       };
+    }
 
-      const result = await startAnalysisApi.execute(analysisRequest);
+    addTestResult(newTest);
+    setCurrentAnalysis(prev => prev ? { ...prev, testId: newTest.id } : null);
+    
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    setIsAnalyzing(false);
+    setCurrentAnalysis(null);
+  };
+
+  const addTestResult = (result: TestHistoryItem) => {
+    setTestHistory(prev => [result, ...prev]);
+    
+    // Update analytics
+    setAnalytics(prev => ({
+      ...prev,
+      testsRun: prev.testsRun + 1,
+      lastScan: new Date().toISOString(),
+      score: result.details.score,
+      vulnerabilities: {
+        critical: prev.vulnerabilities.critical + (result.details.vulnerabilityDetails?.filter(v => v.severity === "Critical").length || 0),
+        high: prev.vulnerabilities.high + (result.details.vulnerabilityDetails?.filter(v => v.severity === "High").length || 0),
+        medium: prev.vulnerabilities.medium + (result.details.vulnerabilityDetails?.filter(v => v.severity === "Medium").length || 0),
+        low: prev.vulnerabilities.low + (result.details.vulnerabilityDetails?.filter(v => v.severity === "Low").length || 0),
+      }
+    }));
+  };
+
+  const addReport = (report: ReportItem) => {
+    setReports(prev => [report, ...prev]);
+  };
+
+  const markReportAsRead = (reportId: string) => {
+    setReports(prev => prev.map(report => 
+      report.id === reportId ? { ...report, read: true } : report
+    ));
+  };
+
+  const deleteTest = (testId: string) => {
+    // Get current user
+    const currentUser = localStorage.getItem("cyberxpert-user");
+    if (!currentUser) return;
+    
+    const user: User = JSON.parse(currentUser);
+    
+    setTestHistory(prev => {
+      const testToDelete = prev.find(test => test.id === testId);
       
-      if (result) {
-        // Poll for analysis completion
-        const pollForCompletion = async (analysisId: string) => {
-          const checkStatus = async () => {
-            try {
-              const statusResponse = await securityApi.getAnalysisStatus(analysisId);
-              
-              if (statusResponse.status === 'completed') {
-                // Refresh data to get the new test and report
-                await refreshData();
-                toast.success('Analysis completed successfully!');
-                setIsLoading(false);
-                return true;
-              } else if (statusResponse.status === 'failed') {
-                toast.error('Analysis failed');
-                setIsLoading(false);
-                return false;
-              } else {
-                // Continue polling
-                setTimeout(checkStatus, 2000);
-              }
-            } catch (error) {
-              console.error('Failed to check analysis status:', error);
-              setIsLoading(false);
-              return false;
-            }
-          };
-          
-          await checkStatus();
-        };
-
-        // Start polling
-        pollForCompletion(result.analysisId);
-        return true;
+      // Only allow deletion if user is admin or if they created the test
+      if (user.role === "admin" || (testToDelete?.createdBy?.id === user.id)) {
+        return prev.filter(test => test.id !== testId);
       }
       
-      setIsLoading(false);
-      return false;
-    } catch (error) {
-      console.error("Analysis error:", error);
-      setIsLoading(false);
-      return false;
-    }
+      return prev;
+    });
   };
 
-  // Solve vulnerabilities for a test
   const solveVulnerabilities = async (testId: string): Promise<boolean> => {
-    const result = await solveVulnerabilitiesApi.execute(testId);
+    // Get current user
+    const currentUser = localStorage.getItem("cyberxpert-user");
+    if (!currentUser) return false;
     
-    if (result?.success) {
-      // Refresh data to get updated test status
-      await refreshData();
-      return true;
+    const user: User = JSON.parse(currentUser);
+    
+    // Only allow if user is admin
+    if (user.role !== "admin") {
+      return false;
     }
+
+    // Simulate solving process
+    await new Promise(resolve => setTimeout(resolve, 3000));
     
-    return false;
+    setTestHistory(prev => prev.map(test => {
+      if (test.id === testId) {
+        return {
+          ...test,
+          details: {
+            ...test.details,
+            mitigationApplied: true,
+            mitigationSuccess: Math.random() > 0.2 // 80% success rate
+          }
+        };
+      }
+      return test;
+    }));
+
+    return true;
   };
 
-  // Get a test by ID
-  const getTestById = (id: string) => {
-    return testHistory.find(test => test.id === id);
+  const generateDetailedReport = async (testId: string): Promise<boolean> => {
+    // Get current user
+    const currentUser = localStorage.getItem("cyberxpert-user");
+    if (!currentUser) return false;
+    
+    const user: User = JSON.parse(currentUser);
+    
+    // Only allow if user is admin
+    if (user.role !== "admin") {
+      return false;
+    }
+
+    const test = testHistory.find(t => t.id === testId);
+    if (!test) return false;
+
+    // Generate a detailed report
+    const newReport: ReportItem = {
+      id: `report-${Date.now()}`,
+      date: new Date().toLocaleDateString(),
+      time: new Date().toLocaleTimeString(),
+      read: false,
+      createdBy: test.createdBy,
+      securityPosture: {
+        score: test.details.score,
+        criticalIssues: test.details.vulnerabilityDetails?.filter(v => v.severity === "Critical").length || 0,
+        highIssues: test.details.vulnerabilityDetails?.filter(v => v.severity === "High").length || 0,
+        mediumIssues: test.details.vulnerabilityDetails?.filter(v => v.severity === "Medium").length || 0,
+        lowIssues: test.details.vulnerabilityDetails?.filter(v => v.severity === "Low").length || 0,
+        details: `Detailed analysis of test ${testId} revealing ${test.details.vulnerabilities} security issues across ${test.details.components} components.`
+      }
+    };
+
+    addReport(newReport);
+    return true;
   };
 
-  // Get a report by ID
-  const getReportById = (id: string) => {
-    return reports.find(report => report.id === id);
+  const refreshData = () => {
+    // Simulate data refresh
+    const refreshedAnalytics: AnalyticsData = {
+      ...analytics,
+      trend: Math.random() > 0.5 ? "up" : Math.random() > 0.5 ? "down" : "stable",
+      monthlyData: analytics.monthlyData.map(item => ({
+        ...item,
+        score: Math.max(0, Math.min(100, item.score + (Math.random() - 0.5) * 10))
+      }))
+    };
+    
+    setAnalytics(refreshedAnalytics);
   };
 
   return (
     <DataContext.Provider value={{
       testHistory,
       reports,
-      analyticsData,
-      isLoading: isLoading || startAnalysisApi.loading,
+      analytics,
+      isAnalyzing,
+      currentAnalysis,
       startAnalysis,
-      getTestById,
-      getReportById,
-      getUserVisibleTests,
-      getUserVisibleReports,
-      refreshData,
-      solveVulnerabilities
+      addTestResult,
+      addReport,
+      markReportAsRead,
+      deleteTest,
+      solveVulnerabilities,
+      generateDetailedReport,
+      refreshData
     }}>
       {children}
     </DataContext.Provider>
