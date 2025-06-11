@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth, UserRole } from "@/context/AuthContext";
@@ -52,7 +51,6 @@ const SignupForm = () => {
     setIsSubmitting(true);
     
     try {
-      // Use "admin" instead of "Admin" to match backend expectations
       const success = await signup(username, email, password, "admin" as UserRole);
       if (success) {
         navigate("/action");

@@ -10,7 +10,7 @@ import { Loader } from "lucide-react";
 const LoginForm = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<UserRole>("dev");
+  const [role, setRole] = useState<UserRole>("developer");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -103,7 +103,7 @@ const LoginForm = () => {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="admin">Admin</SelectItem>
-            <SelectItem value="dev">Dev</SelectItem>
+            <SelectItem value="developer">Developer</SelectItem>
           </SelectContent>
         </Select>
       </div>

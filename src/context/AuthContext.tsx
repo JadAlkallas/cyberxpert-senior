@@ -1,10 +1,11 @@
+
 import { createContext, useState, useContext, ReactNode, useEffect } from "react";
 import { toast } from "@/components/ui/sonner";
 import { useNavigate } from "react-router-dom";
 import { authApi } from "@/services/authApi";
 import { useApi } from "@/hooks/useApi";
 
-export type UserRole = "admin" | "dev";
+export type UserRole = "admin" | "developer";
 export type UserStatus = "active" | "suspended";
 
 export interface User {
