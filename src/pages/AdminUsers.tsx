@@ -298,5 +298,3 @@ const AdminUsers = () => {
 };
 
 export default AdminUsers;
-
-</initial_code>
