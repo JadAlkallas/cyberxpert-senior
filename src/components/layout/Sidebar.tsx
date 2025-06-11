@@ -13,6 +13,11 @@ const Sidebar = () => {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   
+  // Debug logging
+  console.log("Sidebar: Current user:", user);
+  console.log("Sidebar: User role:", user?.role);
+  console.log("Sidebar: Is admin?", user?.role === "admin");
+  
   // Only show sidebar for authenticated users
   if (!user) return null;
   
@@ -40,13 +45,18 @@ const Sidebar = () => {
   
   // Add admin-only menu items
   if (user.role === "admin") {
+    console.log("Sidebar: Adding User Management for admin");
     menuItems.push({ 
       name: "User Management", 
       path: "/admin/users", 
       icon: <Users className="h-5 w-5" />,
       badge: pendingUsersCount > 0 ? pendingUsersCount : null
     });
+  } else {
+    console.log("Sidebar: Not adding User Management - user role is:", user.role);
   }
+  
+  console.log("Sidebar: Final menu items:", menuItems);
   
   return (
     <div
