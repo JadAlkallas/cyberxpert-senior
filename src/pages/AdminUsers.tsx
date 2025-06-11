@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Header from "@/components/layout/Header";
 import Sidebar from "@/components/layout/Sidebar";
 import { useAuth } from "@/context/AuthContext";
@@ -61,9 +61,27 @@ const AdminUsers = () => {
     }
   });
 
-  // Redirect if not an admin
-  if (user?.role !== "admin") {
-    navigate("/home");
+  // Debug logging
+  console.log("AdminUsers: Current user:", user);
+  console.log("AdminUsers: User role:", user?.role);
+  console.log("AdminUsers: Is admin?", user?.role?.toLowerCase() === "admin");
+
+  // Check if user is admin - redirect if not
+  useEffect(() => {
+    if (user && user.role?.toLowerCase() !== "admin") {
+      console.log("AdminUsers: User is not admin, redirecting to home");
+      navigate("/home");
+    }
+  }, [user, navigate]);
+
+  // Don't render anything if not authenticated or not admin
+  if (!user) {
+    console.log("AdminUsers: No user found, returning null");
+    return null;
+  }
+  
+  if (user.role?.toLowerCase() !== "admin") {
+    console.log("AdminUsers: User is not admin, returning null");
     return null;
   }
   
@@ -95,7 +113,10 @@ const AdminUsers = () => {
     setIsSubmitting(false);
   };
   
-  return <div className="min-h-screen flex flex-col">
+  console.log("AdminUsers: Rendering admin panel");
+  
+  return (
+    <div className="min-h-screen flex flex-col">
       <Header />
       
       <div className="flex-1 flex">
@@ -121,9 +142,12 @@ const AdminUsers = () => {
                     <CardDescription>View and manage all user accounts</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {allUsers.length === 0 ? <div className="text-center py-8 text-gray-500">
+                    {allUsers.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
                         No user accounts found
-                      </div> : <Table>
+                      </div>
+                    ) : (
+                      <Table>
                         <TableHeader>
                           <TableRow>
                             <TableHead>Username</TableHead>
@@ -135,18 +159,31 @@ const AdminUsers = () => {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {allUsers.map(user => <TableRow key={user.id}>
+                          {allUsers.map(user => (
+                            <TableRow key={user.id}>
                               <TableCell className="font-medium">{user.username}</TableCell>
                               <TableCell>{user.email}</TableCell>
                               <TableCell>
                                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                  {user.role === "developer" ? <User className="h-3.5 w-3.5 mr-1" /> : <Shield className="h-3.5 w-3.5 mr-1" />}
+                                  {user.role === "developer" ? (
+                                    <User className="h-3.5 w-3.5 mr-1" />
+                                  ) : (
+                                    <Shield className="h-3.5 w-3.5 mr-1" />
+                                  )}
                                   {user.role}
                                 </span>
                               </TableCell>
                               <TableCell>
-                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${user.status === "active" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
-                                  {user.status === "active" ? <UserCheck className="h-3.5 w-3.5 mr-1" /> : <UserX className="h-3.5 w-3.5 mr-1" />}
+                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                  user.status === "active" 
+                                    ? "bg-green-100 text-green-800" 
+                                    : "bg-red-100 text-red-800"
+                                }`}>
+                                  {user.status === "active" ? (
+                                    <UserCheck className="h-3.5 w-3.5 mr-1" />
+                                  ) : (
+                                    <UserX className="h-3.5 w-3.5 mr-1" />
+                                  )}
                                   {user.status === "active" ? "Active" : "Suspended"}
                                 </span>
                               </TableCell>
@@ -155,19 +192,43 @@ const AdminUsers = () => {
                               </TableCell>
                               <TableCell className="text-right">
                                 <div className="flex justify-end gap-2">
-                                  <Button size="sm" variant={user.status === "active" ? "destructive" : "outline"} className="h-8" onClick={() => handleToggleStatus(user.id, user.status)} disabled={processingId === user.id}>
-                                    {processingId === user.id ? <LoadingSpinner size="sm" className="mr-1" /> : user.status === "active" ? <UserX className="h-4 w-4 mr-1" /> : <UserCheck className="h-4 w-4 mr-1" />}
+                                  <Button 
+                                    size="sm" 
+                                    variant={user.status === "active" ? "destructive" : "outline"} 
+                                    className="h-8" 
+                                    onClick={() => handleToggleStatus(user.id, user.status)} 
+                                    disabled={processingId === user.id}
+                                  >
+                                    {processingId === user.id ? (
+                                      <LoadingSpinner size="sm" className="mr-1" />
+                                    ) : user.status === "active" ? (
+                                      <UserX className="h-4 w-4 mr-1" />
+                                    ) : (
+                                      <UserCheck className="h-4 w-4 mr-1" />
+                                    )}
                                     {user.status === "active" ? "Suspend" : "Activate"}
                                   </Button>
-                                  <Button size="sm" variant="destructive" className="h-8" onClick={() => handleDelete(user.id)} disabled={processingId === user.id}>
-                                    {processingId === user.id ? <LoadingSpinner size="sm" className="mr-1" /> : <UserX className="h-4 w-4 mr-1" />}
+                                  <Button 
+                                    size="sm" 
+                                    variant="destructive" 
+                                    className="h-8" 
+                                    onClick={() => handleDelete(user.id)} 
+                                    disabled={processingId === user.id}
+                                  >
+                                    {processingId === user.id ? (
+                                      <LoadingSpinner size="sm" className="mr-1" />
+                                    ) : (
+                                      <UserX className="h-4 w-4 mr-1" />
+                                    )}
                                     Delete
                                   </Button>
                                 </div>
                               </TableCell>
-                            </TableRow>)}
+                            </TableRow>
+                          ))}
                         </TableBody>
-                      </Table>}
+                      </Table>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -181,15 +242,19 @@ const AdminUsers = () => {
                   <CardContent>
                     <Form {...form}>
                       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                        <FormField control={form.control} name="username" render={({
-                        field
-                      }) => <FormItem>
+                        <FormField 
+                          control={form.control} 
+                          name="username" 
+                          render={({ field }) => (
+                            <FormItem>
                               <FormLabel>Username</FormLabel>
                               <FormControl>
                                 <Input placeholder="johndoe" {...field} />
                               </FormControl>
                               <FormMessage />
-                            </FormItem>} />
+                            </FormItem>
+                          )} 
+                        />
                         
                         <FormField control={form.control} name="email" render={({
                         field
@@ -294,7 +359,8 @@ const AdminUsers = () => {
           </div>
         </main>
       </div>
-    </div>;
+    </div>
+  );
 };
 
 export default AdminUsers;
