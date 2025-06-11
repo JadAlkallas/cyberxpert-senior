@@ -32,8 +32,8 @@ const SignupForm = () => {
     
     if (!password) {
       newErrors.password = "Password is required";
-    } else if (password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters";
+    } else if (password.length < 8) {
+      newErrors.password = "Password must be at least 8 characters";
     }
     
     if (password !== confirmPassword) {
@@ -52,7 +52,8 @@ const SignupForm = () => {
     setIsSubmitting(true);
     
     try {
-      const success = await signup(username, email, password, "Admin");
+      // Use "admin" instead of "Admin" to match backend expectations
+      const success = await signup(username, email, password, "admin" as UserRole);
       if (success) {
         navigate("/action");
       }

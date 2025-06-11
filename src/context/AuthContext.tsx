@@ -1,11 +1,10 @@
-
 import { createContext, useState, useContext, ReactNode, useEffect } from "react";
 import { toast } from "@/components/ui/sonner";
 import { useNavigate } from "react-router-dom";
 import { authApi } from "@/services/authApi";
 import { useApi } from "@/hooks/useApi";
 
-export type UserRole = "Admin" | "Dev";
+export type UserRole = "admin" | "dev";
 export type UserStatus = "active" | "suspended";
 
 export interface User {
@@ -73,7 +72,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     showSuccessToast: true
   });
 
-  const isAuthenticated = !!user && (user.status === "active" || user.role === "Admin");
+  const isAuthenticated = !!user && (user.status === "active" || user.role === "admin");
   
   useEffect(() => {
     const token = localStorage.getItem('auth-token');
@@ -95,14 +94,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Load all users for admin
   useEffect(() => {
-    if (user?.role === 'Admin') {
+    if (user?.role === 'admin') {
       refreshUsers();
     }
   }, [user]);
 
   // Refresh users list (admin only)
   const refreshUsers = async (): Promise<void> => {
-    if (user?.role !== 'Admin') return;
+    if (user?.role !== 'admin') return;
     
     const users = await getAllUsersApi.execute();
     if (users) {
@@ -287,3 +286,5 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     </AuthContext.Provider>
   );
 };
+
+export default AuthProvider;
