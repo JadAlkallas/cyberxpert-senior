@@ -24,6 +24,7 @@ const Sidebar = () => {
   const unreadReportsCount = user.role === "admin" ? 
     reports.filter(report => !report.read).length : 0;
   
+  // Build menu items dynamically based on user role
   const menuItems = [
     { name: "Home", path: "/home", icon: <Home className="h-5 w-5" /> },
     { name: "Account", path: "/account", icon: <User className="h-5 w-5" /> },
