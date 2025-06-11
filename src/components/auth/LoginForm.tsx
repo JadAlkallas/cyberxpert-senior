@@ -1,16 +1,14 @@
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth, UserRole } from "@/context/AuthContext";
+import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader } from "lucide-react";
 
 const LoginForm = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<UserRole>("developer");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -42,7 +40,12 @@ const LoginForm = () => {
     setIsSubmitting(true);
     
     try {
-      const success = await login(username, password, role);
+      // Try developer role first, then admin if that fails
+      let success = await login(username, password, "developer");
+      if (!success) {
+        success = await login(username, password, "admin");
+      }
+      
       if (success) {
         navigate("/action");
       }
@@ -87,25 +90,6 @@ const LoginForm = () => {
         {errors.password && (
           <p className="text-red-500 text-xs">{errors.password}</p>
         )}
-      </div>
-      
-      <div className="space-y-2">
-        <label htmlFor="role" className="block text-sm font-medium">
-          Role
-        </label>
-        <Select
-          value={role}
-          onValueChange={(value) => setRole(value as UserRole)}
-          disabled={isSubmitting}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select role" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="admin">Admin</SelectItem>
-            <SelectItem value="developer">Developer</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
       
       <Button type="submit" className="w-full" disabled={isSubmitting}>
