@@ -11,9 +11,10 @@ import { useData } from "@/context/DataContext";
 import { toast } from "@/components/ui/sonner";
 import { Loader, User } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { AvatarUpload } from "@/components/ui/avatar-upload";
 
 const Account = () => {
-  const { user, updateUserProfile } = useAuth();
+  const { user, updateUserProfile, uploadAvatar } = useAuth();
   const { analyticsData } = useData();
   
   const [isUpdating, setIsUpdating] = useState(false);
@@ -94,6 +95,10 @@ const Account = () => {
     } finally {
       setIsUpdating(false);
     }
+  };
+
+  const handleAvatarUpload = async (file: File): Promise<string | null> => {
+    return await uploadAvatar(file);
   };
   
   return (
@@ -333,30 +338,28 @@ const Account = () => {
                     </CardContent>
                   </Card>
                   
-                  {/* Account Info */}
+                  {/* Account Info with Avatar Upload */}
                   <Card>
                     <CardHeader>
                       <CardTitle>Account Info</CardTitle>
-                      <CardDescription>Your account details</CardDescription>
+                      <CardDescription>Your account details and profile photo</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
                       <div className="flex flex-col items-center">
-                        <div className="h-20 w-20 rounded-full bg-gray-200 flex items-center justify-center mb-3">
-                          {user?.avatarUrl ? (
-                            <img 
-                              src={user.avatarUrl} 
-                              alt="Profile" 
-                              className="h-full w-full rounded-full object-cover"
-                            />
-                          ) : (
-                            <User className="h-10 w-10 text-gray-500" />
-                          )}
+                        <AvatarUpload
+                          currentAvatarUrl={user?.avatarUrl}
+                          username={user?.username || ""}
+                          onUpload={handleAvatarUpload}
+                          disabled={isUpdating}
+                        />
+                        
+                        <div className="text-center mt-4">
+                          <h3 className="text-lg font-medium">{user?.username}</h3>
+                          <span className="text-sm text-gray-500">{user?.email}</span>
+                          <span className="mt-1 text-xs px-2 py-1 bg-gray-100 rounded-full block">
+                            {user?.role} Account
+                          </span>
                         </div>
-                        <h3 className="text-lg font-medium">{user?.username}</h3>
-                        <span className="text-sm text-gray-500">{user?.email}</span>
-                        <span className="mt-1 text-xs px-2 py-1 bg-gray-100 rounded-full">
-                          {user?.role} Account
-                        </span>
                       </div>
                       
                       <div className="border-t pt-4">

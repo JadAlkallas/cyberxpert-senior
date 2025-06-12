@@ -1,3 +1,4 @@
+
 import { apiRequest } from './api';
 import { User, UserRole, UserStatus } from '@/context/AuthContext';
 
@@ -79,6 +80,20 @@ export const authApi = {
     return apiRequest('/auth/profile', {
       method: 'PUT',
       body: JSON.stringify(data),
+    });
+  },
+
+  // Upload avatar
+  uploadAvatar: async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('avatar', file);
+    
+    return apiRequest<string>('/auth/upload-avatar', {
+      method: 'POST',
+      body: formData,
+      headers: {
+        // Don't set Content-Type - let browser set it for FormData
+      },
     });
   },
 

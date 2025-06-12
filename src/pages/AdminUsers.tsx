@@ -18,7 +18,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
-// Updated form schema to match backend validation
+// Updated form schema to match backend validation - removed security_analyst and inactive
 const accountSchema = z.object({
   username: z.string().min(3, {
     message: "Username must be at least 3 characters"
@@ -30,8 +30,8 @@ const accountSchema = z.object({
     message: "Password must be at least 8 characters"
   }),
   confirmPassword: z.string(),
-  role: z.enum(["developer", "admin", "security_analyst"]),
-  status: z.enum(["active", "suspended", "inactive"])
+  role: z.enum(["developer", "admin"]),
+  status: z.enum(["active", "suspended"])
 }).refine(data => data.password === data.confirmPassword, {
   message: "Passwords do not match",
   path: ["confirmPassword"]
@@ -86,7 +86,7 @@ const AdminUsers = () => {
     // Simulate API delay
     await new Promise(resolve => setTimeout(resolve, 1000));
     const newStatus = currentStatus === "active" ? "suspended" : "active";
-    updateDevStatus(userId, newStatus as "active" | "suspended" | "inactive");
+    updateDevStatus(userId, newStatus as "active" | "suspended");
     setProcessingId(null);
   };
   
@@ -168,7 +168,7 @@ const AdminUsers = () => {
                                   ) : (
                                     <UserX className="h-3.5 w-3.5 mr-1" />
                                   )}
-                                  {user.status === "active" ? "Active" : user.status === "suspended" ? "Suspended" : "Inactive"}
+                                  {user.status === "active" ? "Active" : "Suspended"}
                                 </span>
                               </TableCell>
                               <TableCell>
@@ -292,13 +292,6 @@ const AdminUsers = () => {
                                       Administrator
                                     </Label>
                                   </div>
-                                  <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="security_analyst" id="role-security-analyst" />
-                                    <Label htmlFor="role-security-analyst" className="flex items-center">
-                                      <Shield className="h-4 w-4 mr-2" />
-                                      Security Analyst
-                                    </Label>
-                                  </div>
                                 </RadioGroup>
                               </FormControl>
                               <FormMessage />
@@ -324,17 +317,10 @@ const AdminUsers = () => {
                                       Suspended
                                     </Label>
                                   </div>
-                                  <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="inactive" id="status-inactive" />
-                                    <Label htmlFor="status-inactive" className="flex items-center">
-                                      <UserX className="h-4 w-4 mr-2" />
-                                      Inactive
-                                    </Label>
-                                  </div>
                                 </RadioGroup>
                               </FormControl>
                               <FormDescription>
-                                Suspended/Inactive users can log in but cannot perform testing actions
+                                Suspended users can log in but cannot perform testing actions
                               </FormDescription>
                               <FormMessage />
                             </FormItem>} />

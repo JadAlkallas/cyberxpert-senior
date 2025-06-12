@@ -1,12 +1,13 @@
+
 import { createContext, useState, useContext, ReactNode, useEffect } from "react";
 import { toast } from "@/components/ui/sonner";
 import { useNavigate } from "react-router-dom";
 import { authApi } from "@/services/authApi";
 import { useApi } from "@/hooks/useApi";
 
-// Updated to match Laravel backend validation
-export type UserRole = "admin" | "developer" | "security_analyst";
-export type UserStatus = "active" | "suspended" | "inactive";
+// Updated to match Laravel backend validation - removed security_analyst and inactive
+export type UserRole = "admin" | "developer";
+export type UserStatus = "active" | "suspended";
 
 export interface User {
   id: string;
@@ -27,6 +28,7 @@ interface AuthContextType {
   signup: (username: string, email: string, password: string, role: UserRole) => Promise<boolean>;
   logout: () => void;
   updateUserProfile: (updates: Partial<User>) => Promise<boolean>;
+  uploadAvatar: (file: File) => Promise<string | null>;
   addDevAccount: (username: string, email: string, password: string, role: UserRole, status: UserStatus) => Promise<boolean>;
   deleteDevAccount: (userId: string) => Promise<boolean>;
   updateDevStatus: (userId: string, status: UserStatus) => Promise<boolean>;
@@ -71,6 +73,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   });
   const deleteUserApi = useApi(authApi.deleteUser, {
     showSuccessToast: true
+  });
+  const uploadAvatarApi = useApi(authApi.uploadAvatar, {
+    showSuccessToast: true,
+    successMessage: "Avatar uploaded successfully"
   });
 
   // Helper function to check if user is admin - handles case sensitivity
@@ -209,6 +215,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     return false;
   };
+
+  // New avatar upload function
+  const uploadAvatar = async (file: File): Promise<string | null> => {
+    if (!user) return null;
+    
+    const result = await uploadAvatarApi.execute(file);
+    
+    if (result) {
+      // Update user profile with new avatar URL
+      const updatedUser = { ...user, avatarUrl: result };
+      setUser(updatedUser);
+      localStorage.setItem("cyberxpert-user", JSON.stringify(updatedUser));
+      
+      // Also update in allUsers list
+      setAllUsers(prev => prev.map(u => 
+        u.id === user.id ? { ...u, avatarUrl: result } : u
+      ));
+      
+      return result;
+    }
+    
+    return null;
+  };
   
   const addDevAccount = async (
     username: string, 
@@ -317,6 +346,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       signup,
       logout,
       updateUserProfile,
+      uploadAvatar,
       addDevAccount,
       deleteDevAccount,
       updateDevStatus,

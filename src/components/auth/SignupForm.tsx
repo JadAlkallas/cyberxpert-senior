@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth, UserRole } from "@/context/AuthContext";
@@ -51,7 +52,8 @@ const SignupForm = () => {
     setIsSubmitting(true);
     
     try {
-      const success = await signup(username, email, password, "admin" as UserRole);
+      // Updated to use "developer" role instead of "admin" for new signups
+      const success = await signup(username, email, password, "developer" as UserRole);
       if (success) {
         navigate("/action");
       }
@@ -141,7 +143,7 @@ const SignupForm = () => {
             Creating account...
           </>
         ) : (
-          "Create Admin Account"
+          "Create Developer Account"
         )}
       </Button>
     </form>
