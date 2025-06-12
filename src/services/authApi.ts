@@ -1,6 +1,7 @@
 
 import { apiRequest } from './api';
 import { User, UserRole, UserStatus } from '@/context/AuthContext';
+import { TokenResponse, DjangoUser, PaginatedResponse } from '@/types/api';
 
 // API request/response types for Django Simple JWT - Updated for your endpoints
 export interface LoginRequest {
@@ -8,10 +9,8 @@ export interface LoginRequest {
   password: string;
 }
 
-export interface LoginResponse {
-  access: string;
-  refresh: string;
-  user: User;
+export interface LoginResponse extends TokenResponse {
+  user: DjangoUser;
 }
 
 export interface SignupRequest {
@@ -83,12 +82,12 @@ export const authApi = {
   },
 
   // Get current user profile
-  getProfile: async (): Promise<User> => {
+  getProfile: async (): Promise<DjangoUser> => {
     return apiRequest('/auth/user/');
   },
 
   // Update user profile
-  updateProfile: async (data: UpdateUserRequest): Promise<User> => {
+  updateProfile: async (data: UpdateUserRequest): Promise<DjangoUser> => {
     return apiRequest('/auth/user/', {
       method: 'PATCH',
       body: JSON.stringify(data),
@@ -105,24 +104,26 @@ export const authApi = {
       body: formData,
       headers: {
         // Don't set Content-Type - let browser set it for FormData
-      },
+      } as Record<string, string>,
     }).then(response => response.avatar_url);
   },
 
   // Admin: Get all users
-  getAllUsers: async (): Promise<User[]> => {
-    return apiRequest('/admin/users/');
+  getAllUsers: async (): Promise<DjangoUser[]> => {
+    const response = await apiRequest<PaginatedResponse<DjangoUser> | DjangoUser[]>('/admin/users/');
+    // Handle both paginated and non-paginated responses
+    return Array.isArray(response) ? response : response.results;
   },
 
   // Admin: Create user account
-  createUser: async (data: CreateUserRequest): Promise<User> => {
+  createUser: async (data: CreateUserRequest): Promise<DjangoUser> => {
     console.log("=== AUTH API CREATE USER DEBUG ===");
     console.log("Request data:", data);
     console.log("Current access token:", localStorage.getItem("access-token"));
     console.log("Making request to: /admin/users/");
     
     try {
-      const result = await apiRequest<User>('/admin/users/', {
+      const result = await apiRequest<DjangoUser>('/admin/users/', {
         method: 'POST',
         body: JSON.stringify(data),
       });
@@ -150,7 +151,7 @@ export const authApi = {
   },
 
   // Admin: Update user
-  updateUser: async (userId: string, data: UpdateUserRequest): Promise<User> => {
+  updateUser: async (userId: string, data: UpdateUserRequest): Promise<DjangoUser> => {
     return apiRequest(`/admin/users/${userId}/`, {
       method: 'PATCH',
       body: JSON.stringify(data),

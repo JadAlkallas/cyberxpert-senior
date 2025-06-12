@@ -1,6 +1,7 @@
 
 import { apiRequest } from './api';
 import { TestHistoryItem, ReportItem, AnalyticsData } from '@/context/DataContext';
+import { PaginatedResponse, AnalysisStatus } from '@/types/api';
 
 // API request/response types for Django
 export interface StartAnalysisRequest {
@@ -12,22 +13,11 @@ export interface StartAnalysisRequest {
 export interface StartAnalysisResponse {
   analysis_id: string;
   estimated_duration: number;
-  status: 'initiated' | 'queued';
+  status: AnalysisStatus;
 }
 
-export interface GetTestsResponse {
-  results: TestHistoryItem[]; // Django REST framework pagination format
-  count: number;
-  next: string | null;
-  previous: string | null;
-}
-
-export interface GetReportsResponse {
-  results: ReportItem[];
-  count: number;
-  next: string | null;
-  previous: string | null;
-}
+export type GetTestsResponse = PaginatedResponse<TestHistoryItem>;
+export type GetReportsResponse = PaginatedResponse<ReportItem>;
 
 // Security API service for Django
 export const securityApi = {
@@ -40,7 +30,7 @@ export const securityApi = {
   },
 
   // Get analysis status
-  getAnalysisStatus: async (analysisId: string): Promise<{ status: string; progress: number }> => {
+  getAnalysisStatus: async (analysisId: string): Promise<{ status: AnalysisStatus; progress: number }> => {
     return apiRequest(`/security/analyze/${analysisId}/status/`);
   },
 

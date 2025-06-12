@@ -2,7 +2,7 @@
 import { ENV } from '@/config/env';
 
 // Base API configuration - Updated to use port 8000 for Django backend
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+const API_BASE_URL = ENV.API_BASE_URL;
 
 // JWT token refresh helper - Updated to use your /token/refresh endpoint
 const refreshAccessToken = async (): Promise<string | null> => {
@@ -123,7 +123,7 @@ const apiRequest = async <T>(endpoint: string, options?: RequestInit): Promise<T
     // Provide more specific error messages based on error type
     if (error instanceof TypeError) {
       if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-        throw new Error('Cannot connect to Django server on port 8000. Please ensure:\n• Your Django backend is running on port 8000\n• CORS is properly configured in your Django settings\n• No firewall is blocking the connection\n• The backend routes are properly set up');
+        throw new Error(`Cannot connect to Django server at ${API_BASE_URL}. Please ensure:\n• Your Django backend is running on port 8000\n• CORS is properly configured in your Django settings\n• No firewall is blocking the connection\n• The backend routes are properly set up`);
       }
     }
     
