@@ -2,38 +2,38 @@
 import { apiRequest } from './api';
 import { TestHistoryItem, ReportItem, AnalyticsData } from '@/context/DataContext';
 
-// API request/response types
+// API request/response types for Django
 export interface StartAnalysisRequest {
-  userId: string;
-  projectId?: string;
-  analysisType?: 'full' | 'quick' | 'targeted';
+  user_id: string; // Django uses snake_case
+  project_id?: string;
+  analysis_type?: 'full' | 'quick' | 'targeted';
 }
 
 export interface StartAnalysisResponse {
-  analysisId: string;
-  estimatedDuration: number;
+  analysis_id: string;
+  estimated_duration: number;
   status: 'initiated' | 'queued';
 }
 
 export interface GetTestsResponse {
-  tests: TestHistoryItem[];
-  total: number;
-  page: number;
-  limit: number;
+  results: TestHistoryItem[]; // Django REST framework pagination format
+  count: number;
+  next: string | null;
+  previous: string | null;
 }
 
 export interface GetReportsResponse {
-  reports: ReportItem[];
-  total: number;
-  page: number;
-  limit: number;
+  results: ReportItem[];
+  count: number;
+  next: string | null;
+  previous: string | null;
 }
 
-// Security API service
+// Security API service for Django
 export const securityApi = {
   // Start a new security analysis
   startAnalysis: async (data: StartAnalysisRequest): Promise<StartAnalysisResponse> => {
-    return apiRequest<StartAnalysisResponse>('/security/analyze', {
+    return apiRequest<StartAnalysisResponse>('/security/analyze/', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -41,67 +41,67 @@ export const securityApi = {
 
   // Get analysis status
   getAnalysisStatus: async (analysisId: string): Promise<{ status: string; progress: number }> => {
-    return apiRequest(`/security/analyze/${analysisId}/status`);
+    return apiRequest(`/security/analyze/${analysisId}/status/`);
   },
 
   // Get user's test history
   getTests: async (params?: { 
     page?: number; 
-    limit?: number; 
-    userId?: string;
+    page_size?: number; // Django uses page_size instead of limit
+    user_id?: string;
     status?: string;
   }): Promise<GetTestsResponse> => {
     const searchParams = new URLSearchParams();
     if (params?.page) searchParams.append('page', params.page.toString());
-    if (params?.limit) searchParams.append('limit', params.limit.toString());
-    if (params?.userId) searchParams.append('userId', params.userId);
+    if (params?.page_size) searchParams.append('page_size', params.page_size.toString());
+    if (params?.user_id) searchParams.append('user_id', params.user_id);
     if (params?.status) searchParams.append('status', params.status);
     
     const query = searchParams.toString();
-    return apiRequest(`/security/tests${query ? `?${query}` : ''}`);
+    return apiRequest(`/security/tests/${query ? `?${query}` : ''}`);
   },
 
   // Get specific test by ID
   getTestById: async (testId: string): Promise<TestHistoryItem> => {
-    return apiRequest(`/security/tests/${testId}`);
+    return apiRequest(`/security/tests/${testId}/`);
   },
 
   // Get user's reports
   getReports: async (params?: { 
     page?: number; 
-    limit?: number; 
-    userId?: string;
+    page_size?: number;
+    user_id?: string;
   }): Promise<GetReportsResponse> => {
     const searchParams = new URLSearchParams();
     if (params?.page) searchParams.append('page', params.page.toString());
-    if (params?.limit) searchParams.append('limit', params.limit.toString());
-    if (params?.userId) searchParams.append('userId', params.userId);
+    if (params?.page_size) searchParams.append('page_size', params.page_size.toString());
+    if (params?.user_id) searchParams.append('user_id', params.user_id);
     
     const query = searchParams.toString();
-    return apiRequest(`/security/reports${query ? `?${query}` : ''}`);
+    return apiRequest(`/security/reports/${query ? `?${query}` : ''}`);
   },
 
   // Get specific report by ID
   getReportById: async (reportId: string): Promise<ReportItem> => {
-    return apiRequest(`/security/reports/${reportId}`);
+    return apiRequest(`/security/reports/${reportId}/`);
   },
 
   // Get analytics data
   getAnalytics: async (userId?: string): Promise<AnalyticsData> => {
-    const query = userId ? `?userId=${userId}` : '';
-    return apiRequest(`/security/analytics${query}`);
+    const query = userId ? `?user_id=${userId}` : '';
+    return apiRequest(`/security/analytics/${query}`);
   },
 
   // Solve vulnerabilities
   solveVulnerabilities: async (testId: string): Promise<{ success: boolean; message: string }> => {
-    return apiRequest(`/security/tests/${testId}/solve`, {
+    return apiRequest(`/security/tests/${testId}/solve/`, {
       method: 'POST',
     });
   },
 
   // Generate detailed report
-  generateDetailedReport: async (testId: string): Promise<{ reportUrl: string; reportId: string }> => {
-    return apiRequest(`/security/tests/${testId}/report`, {
+  generateDetailedReport: async (testId: string): Promise<{ report_url: string; report_id: string }> => {
+    return apiRequest(`/security/tests/${testId}/report/`, {
       method: 'POST',
     });
   },

@@ -1,11 +1,10 @@
-
 import { createContext, useState, useContext, ReactNode, useEffect } from "react";
 import { toast } from "@/components/ui/sonner";
 import { useNavigate } from "react-router-dom";
 import { authApi } from "@/services/authApi";
 import { useApi } from "@/hooks/useApi";
 
-// Updated to match Laravel backend validation - removed security_analyst and inactive
+// Updated to match Django backend validation
 export type UserRole = "admin" | "developer";
 export type UserStatus = "active" | "suspended";
 
@@ -15,8 +14,11 @@ export interface User {
   email: string;
   role: UserRole;
   status: UserStatus;
+  is_active: boolean; // Django field
   avatarUrl?: string;
+  avatar?: string; // Django field name
   createdAt: string;
+  date_joined?: string; // Django field name
 }
 
 interface AuthContextType {
@@ -43,6 +45,22 @@ export const useAuth = () => {
     throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
+};
+
+// Helper function to normalize Django user data
+const normalizeUser = (djangoUser: any): User => {
+  return {
+    id: djangoUser.id,
+    username: djangoUser.username,
+    email: djangoUser.email,
+    role: djangoUser.role || 'developer',
+    status: djangoUser.is_active ? 'active' : 'suspended',
+    is_active: djangoUser.is_active,
+    avatarUrl: djangoUser.avatar || djangoUser.avatarUrl,
+    avatar: djangoUser.avatar,
+    createdAt: djangoUser.date_joined || djangoUser.createdAt,
+    date_joined: djangoUser.date_joined,
+  };
 };
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -84,7 +102,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return userRole?.toLowerCase() === "admin";
   };
 
-  const isAuthenticated = !!user && (user.status === "active" || isUserAdmin(user.role));
+  const isAuthenticated = !!user && (user.is_active || isUserAdmin(user.role));
   
   useEffect(() => {
     const token = localStorage.getItem('auth-token');
@@ -92,8 +110,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Try to get user profile with existing token
       authApi.getProfile()
         .then(userData => {
-          setUser(userData);
-          localStorage.setItem("cyberxpert-user", JSON.stringify(userData));
+          const normalizedUser = normalizeUser(userData);
+          setUser(normalizedUser);
+          localStorage.setItem("cyberxpert-user", JSON.stringify(normalizedUser));
         })
         .catch(() => {
           // Token is invalid, clear it
@@ -117,24 +136,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     const users = await getAllUsersApi.execute();
     if (users) {
-      setAllUsers(users);
+      const normalizedUsers = users.map(normalizeUser);
+      setAllUsers(normalizedUsers);
     }
   };
 
-  // Login function
+  // Login function - Django doesn't require role in login
   const login = async (username: string, password: string, role: UserRole): Promise<boolean> => {
     try {
       setIsLoading(true);
       
-      const result = await loginApi.execute({ username, password, role });
+      const result = await loginApi.execute({ username, password });
       
       if (result) {
-        setUser(result.user);
-        localStorage.setItem("cyberxpert-user", JSON.stringify(result.user));
+        const normalizedUser = normalizeUser(result.user);
+        setUser(normalizedUser);
+        localStorage.setItem("cyberxpert-user", JSON.stringify(normalizedUser));
         localStorage.setItem("auth-token", result.token);
-        localStorage.setItem("refresh-token", result.refreshToken);
         
-        if (result.user.status === "suspended") {
+        if (!normalizedUser.is_active) {
           toast.warning("Your account has been suspended. Contact an administrator for assistance.");
         } else {
           toast.success(`Welcome back, ${username}!`);
@@ -158,13 +178,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       setIsLoading(true);
       
-      const result = await signupApi.execute({ username, email, password, role });
+      const result = await signupApi.execute({ username, email, password, password2: password, role });
       
       if (result) {
-        setUser(result.user);
-        localStorage.setItem("cyberxpert-user", JSON.stringify(result.user));
+        const normalizedUser = normalizeUser(result.user);
+        setUser(normalizedUser);
+        localStorage.setItem("cyberxpert-user", JSON.stringify(normalizedUser));
         localStorage.setItem("auth-token", result.token);
-        localStorage.setItem("refresh-token", result.refreshToken);
         
         toast.success("Account created successfully!");
         setIsLoading(false);
@@ -190,7 +210,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setAllUsers([]);
       localStorage.removeItem("cyberxpert-user");
       localStorage.removeItem("auth-token");
-      localStorage.removeItem("refresh-token");
       navigate("/login");
       toast.success("Logged out successfully");
     }
@@ -199,15 +218,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const updateUserProfile = async (updates: Partial<User>): Promise<boolean> => {
     if (!user) return false;
     
-    const result = await updateProfileApi.execute(updates);
+    // Convert to Django format
+    const djangoUpdates = {
+      username: updates.username,
+      email: updates.email,
+      is_active: updates.status === 'active',
+      avatar: updates.avatarUrl,
+    };
+    
+    const result = await updateProfileApi.execute(djangoUpdates);
     
     if (result) {
-      setUser(result);
-      localStorage.setItem("cyberxpert-user", JSON.stringify(result));
+      const normalizedUser = normalizeUser(result);
+      setUser(normalizedUser);
+      localStorage.setItem("cyberxpert-user", JSON.stringify(normalizedUser));
       
       // Also update the user in the allUsers list if it exists
       setAllUsers(prev => prev.map(u => 
-        u.id === user.id ? { ...u, ...updates } : u
+        u.id === user.id ? { ...u, ...normalizedUser } : u
       ));
       
       return true;
@@ -224,13 +252,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     if (result) {
       // Update user profile with new avatar URL
-      const updatedUser = { ...user, avatarUrl: result };
+      const updatedUser = { ...user, avatarUrl: result, avatar: result };
       setUser(updatedUser);
       localStorage.setItem("cyberxpert-user", JSON.stringify(updatedUser));
       
       // Also update in allUsers list
       setAllUsers(prev => prev.map(u => 
-        u.id === user.id ? { ...u, avatarUrl: result } : u
+        u.id === user.id ? { ...u, avatarUrl: result, avatar: result } : u
       ));
       
       return result;
@@ -251,55 +279,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     console.log("Current user role:", user?.role);
     console.log("Is current user admin?", isUserAdmin(user?.role || ''));
     console.log("Auth token exists:", !!localStorage.getItem("auth-token"));
-    console.log("Auth token:", localStorage.getItem("auth-token"));
-    console.log("Request data:", { username, email, role, status });
     
-    // Additional validation - check if user is actually admin
-    if (!user) {
-      console.error("No user found in context");
-      toast.error("Authentication error: No user found");
-      return false;
-    }
-    
-    if (!isUserAdmin(user.role)) {
-      console.error("User is not admin. Role:", user.role);
+    if (!user || !isUserAdmin(user.role)) {
       toast.error("Access denied: Admin privileges required");
       return false;
     }
-    
-    const token = localStorage.getItem("auth-token");
-    if (!token) {
-      console.error("No auth token found");
-      toast.error("Authentication error: Please log in again");
-      return false;
-    }
-    
-    console.log("All validation passed, making API call...");
     
     const result = await createUserApi.execute({
       username,
       email,
       password,
+      password2: password,
       role,
-      status
+      is_active: status === 'active'
     });
     
-    console.log("API response:", result);
-    
     if (result) {
-      setAllUsers(prev => [...prev, result]);
-      console.log("User created successfully");
+      const normalizedUser = normalizeUser(result);
+      setAllUsers(prev => [...prev, normalizedUser]);
       return true;
     }
     
-    console.log("User creation failed");
     return false;
   };
   
   const deleteDevAccount = async (userId: string): Promise<boolean> => {
     const result = await deleteUserApi.execute(userId);
     
-    if (result?.success) {
+    if (result) {
       const userToDelete = allUsers.find(u => u.id === userId);
       setAllUsers(prev => prev.filter(u => u.id !== userId));
       
@@ -314,20 +321,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
   
   const updateDevStatus = async (userId: string, status: UserStatus): Promise<boolean> => {
-    const result = await updateUserApi.execute(userId, { status });
+    const result = await updateUserApi.execute(userId, { is_active: status === 'active' });
     
     if (result) {
+      const normalizedUser = normalizeUser(result);
       setAllUsers(prev => prev.map(u => 
-        u.id === userId ? { ...u, status } : u
+        u.id === userId ? normalizedUser : u
       ));
       
-      toast.success(`Updated ${result.username}'s status to ${status}`);
+      toast.success(`Updated ${normalizedUser.username}'s status to ${status}`);
       
       // If the currently logged in user is being updated, update their session too
       if (user && user.id === userId) {
-        const updatedUser = { ...user, status };
-        setUser(updatedUser);
-        localStorage.setItem("cyberxpert-user", JSON.stringify(updatedUser));
+        setUser(normalizedUser);
+        localStorage.setItem("cyberxpert-user", JSON.stringify(normalizedUser));
       }
       
       return true;

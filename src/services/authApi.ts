@@ -2,46 +2,46 @@
 import { apiRequest } from './api';
 import { User, UserRole, UserStatus } from '@/context/AuthContext';
 
-// API request/response types
+// API request/response types for Django
 export interface LoginRequest {
   username: string;
   password: string;
-  role: UserRole;
 }
 
 export interface LoginResponse {
-  user: User;
   token: string;
-  refreshToken: string;
+  user: User;
 }
 
 export interface SignupRequest {
   username: string;
   email: string;
   password: string;
-  role: UserRole;
+  password2: string; // Django often requires password confirmation
+  role?: UserRole;
 }
 
 export interface CreateUserRequest {
   username: string;
   email: string;
   password: string;
+  password2: string;
   role: UserRole;
-  status: UserStatus;
+  is_active: boolean; // Django uses is_active instead of status
 }
 
 export interface UpdateUserRequest {
   username?: string;
   email?: string;
-  status?: UserStatus;
-  avatarUrl?: string;
+  is_active?: boolean;
+  avatar?: string;
 }
 
-// Authentication API service
+// Authentication API service for Django
 export const authApi = {
   // User login
   login: async (data: LoginRequest): Promise<LoginResponse> => {
-    return apiRequest<LoginResponse>('/auth/login', {
+    return apiRequest<LoginResponse>('/auth/login/', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -49,36 +49,34 @@ export const authApi = {
 
   // User signup
   signup: async (data: SignupRequest): Promise<LoginResponse> => {
-    return apiRequest<LoginResponse>('/auth/signup', {
+    // Add password confirmation for Django
+    const signupData = {
+      ...data,
+      password2: data.password,
+    };
+    
+    return apiRequest<LoginResponse>('/auth/register/', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify(signupData),
     });
   },
 
   // User logout
-  logout: async (): Promise<{ success: boolean }> => {
-    return apiRequest('/auth/logout', {
+  logout: async (): Promise<{ detail: string }> => {
+    return apiRequest('/auth/logout/', {
       method: 'POST',
-    });
-  },
-
-  // Refresh token
-  refreshToken: async (refreshToken: string): Promise<{ token: string; refreshToken: string }> => {
-    return apiRequest('/auth/refresh', {
-      method: 'POST',
-      body: JSON.stringify({ refreshToken }),
     });
   },
 
   // Get current user profile
   getProfile: async (): Promise<User> => {
-    return apiRequest('/auth/profile');
+    return apiRequest('/auth/user/');
   },
 
   // Update user profile
   updateProfile: async (data: UpdateUserRequest): Promise<User> => {
-    return apiRequest('/auth/profile', {
-      method: 'PUT',
+    return apiRequest('/auth/user/', {
+      method: 'PATCH',
       body: JSON.stringify(data),
     });
   },
@@ -88,29 +86,29 @@ export const authApi = {
     const formData = new FormData();
     formData.append('avatar', file);
     
-    return apiRequest<string>('/auth/upload-avatar', {
+    return apiRequest<{ avatar_url: string }>('/auth/upload-avatar/', {
       method: 'POST',
       body: formData,
       headers: {
         // Don't set Content-Type - let browser set it for FormData
       },
-    });
+    }).then(response => response.avatar_url);
   },
 
-  // Admin: Get all users - Updated to match backend method name
+  // Admin: Get all users
   getAllUsers: async (): Promise<User[]> => {
-    return apiRequest('/admin/users');
+    return apiRequest('/admin/users/');
   },
 
-  // Admin: Create user account - Updated to match backend validation
+  // Admin: Create user account
   createUser: async (data: CreateUserRequest): Promise<User> => {
     console.log("=== AUTH API CREATE USER DEBUG ===");
     console.log("Request data:", data);
     console.log("Current auth token:", localStorage.getItem("auth-token"));
-    console.log("Making request to: /admin/users");
+    console.log("Making request to: /admin/users/");
     
     try {
-      const result = await apiRequest<User>('/admin/users', {
+      const result = await apiRequest<User>('/admin/users/', {
         method: 'POST',
         body: JSON.stringify(data),
       });
@@ -123,12 +121,12 @@ export const authApi = {
       // Log additional details about the error
       if (error instanceof Error) {
         console.error("Error message:", error.message);
-        if (error.message.includes("403") || error.message.includes("Unauthorized")) {
-          console.error("This is an authorization error. The backend is rejecting the request.");
+        if (error.message.includes("403") || error.message.includes("Forbidden")) {
+          console.error("This is an authorization error. The Django backend is rejecting the request.");
           console.error("Possible causes:");
           console.error("1. Token is invalid or expired");
-          console.error("2. User doesn't have admin role on the backend");
-          console.error("3. Backend role validation is case-sensitive");
+          console.error("2. User doesn't have admin permissions on the backend");
+          console.error("3. Django permissions are not properly configured");
           console.error("4. CSRF token issues");
         }
       }
@@ -139,15 +137,15 @@ export const authApi = {
 
   // Admin: Update user
   updateUser: async (userId: string, data: UpdateUserRequest): Promise<User> => {
-    return apiRequest(`/admin/users/${userId}`, {
-      method: 'PUT',
+    return apiRequest(`/admin/users/${userId}/`, {
+      method: 'PATCH',
       body: JSON.stringify(data),
     });
   },
 
   // Admin: Delete user
-  deleteUser: async (userId: string): Promise<{ success: boolean }> => {
-    return apiRequest(`/admin/users/${userId}`, {
+  deleteUser: async (userId: string): Promise<{ detail: string }> => {
+    return apiRequest(`/admin/users/${userId}/`, {
       method: 'DELETE',
     });
   },
