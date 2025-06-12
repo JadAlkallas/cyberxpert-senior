@@ -4,36 +4,6 @@ import { ENV } from '@/config/env';
 // Base API configuration - Updated to use port 8000 for Django backend
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
 
-// Initialize CSRF token for Django
-let csrfToken: string | null = null;
-
-const getCsrfToken = async (): Promise<string | null> => {
-  if (csrfToken) return csrfToken;
-  
-  try {
-    console.log('Getting CSRF token from Django');
-    const response = await fetch(`${API_BASE_URL}/auth/csrf/`, {
-      method: 'GET',
-      credentials: 'include',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
-    });
-    
-    if (response.ok) {
-      const data = await response.json();
-      csrfToken = data.csrfToken;
-      console.log('CSRF token obtained successfully');
-      return csrfToken;
-    }
-  } catch (error) {
-    console.error('Failed to get CSRF token:', error);
-  }
-  
-  return null;
-};
-
 // JWT token refresh helper - Updated to use your /token/refresh endpoint
 const refreshAccessToken = async (): Promise<string | null> => {
   const refreshToken = localStorage.getItem('refresh-token');
@@ -81,14 +51,6 @@ const apiRequest = async <T>(endpoint: string, options?: RequestInit): Promise<T
   let accessToken = localStorage.getItem('access-token');
   if (accessToken) {
     defaultHeaders['Authorization'] = `Bearer ${accessToken}`; // JWT format
-  }
-
-  // Get CSRF token for state-changing requests
-  if (options?.method && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(options.method)) {
-    const csrf = await getCsrfToken();
-    if (csrf) {
-      defaultHeaders['X-CSRFToken'] = csrf;
-    }
   }
 
   const config: RequestInit = {
