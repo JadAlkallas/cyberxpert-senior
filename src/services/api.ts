@@ -34,6 +34,37 @@ const getCsrfToken = async (): Promise<string | null> => {
   return null;
 };
 
+// JWT token refresh helper
+const refreshAccessToken = async (): Promise<string | null> => {
+  const refreshToken = localStorage.getItem('refresh-token');
+  if (!refreshToken) return null;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/token/refresh/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ refresh: refreshToken }),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      localStorage.setItem('access-token', data.access);
+      return data.access;
+    } else {
+      // Refresh token is invalid, clear all tokens
+      localStorage.removeItem('access-token');
+      localStorage.removeItem('refresh-token');
+      localStorage.removeItem('cyberxpert-user');
+      return null;
+    }
+  } catch (error) {
+    console.error('Failed to refresh token:', error);
+    return null;
+  }
+};
+
 // API request helper
 const apiRequest = async <T>(endpoint: string, options?: RequestInit): Promise<T> => {
   console.log('Making API request to:', `${API_BASE_URL}${endpoint}`);
@@ -46,10 +77,10 @@ const apiRequest = async <T>(endpoint: string, options?: RequestInit): Promise<T
     'Accept': 'application/json',
   };
 
-  // Get auth token from localStorage if available
-  const token = localStorage.getItem('auth-token');
-  if (token) {
-    defaultHeaders['Authorization'] = `Token ${token}`; // Django REST framework token format
+  // Get JWT access token from localStorage if available
+  let accessToken = localStorage.getItem('access-token');
+  if (accessToken) {
+    defaultHeaders['Authorization'] = `Bearer ${accessToken}`; // JWT format
   }
 
   // Get CSRF token for state-changing requests
@@ -72,7 +103,25 @@ const apiRequest = async <T>(endpoint: string, options?: RequestInit): Promise<T
   try {
     console.log('Fetch config:', { url, method: config.method || 'GET', headers: config.headers });
     
-    const response = await fetch(url, config);
+    let response = await fetch(url, config);
+    
+    // If we get a 401 and have a refresh token, try to refresh
+    if (response.status === 401 && accessToken) {
+      console.log('Access token expired, trying to refresh...');
+      const newAccessToken = await refreshAccessToken();
+      
+      if (newAccessToken) {
+        // Retry the request with new token
+        config.headers = {
+          ...config.headers,
+          'Authorization': `Bearer ${newAccessToken}`,
+        };
+        response = await fetch(url, config);
+      } else {
+        // Refresh failed, redirect to login would be handled by the calling code
+        throw new Error('Authentication failed. Please log in again.');
+      }
+    }
     
     console.log('Response status:', response.status);
     console.log('Response headers:', Object.fromEntries(response.headers.entries()));

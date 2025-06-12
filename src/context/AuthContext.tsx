@@ -105,9 +105,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const isAuthenticated = !!user && (user.is_active || isUserAdmin(user.role));
   
   useEffect(() => {
-    const token = localStorage.getItem('auth-token');
-    if (token && !user) {
-      // Try to get user profile with existing token
+    const accessToken = localStorage.getItem('access-token');
+    if (accessToken && !user) {
+      // Try to get user profile with existing JWT token
       authApi.getProfile()
         .then(userData => {
           const normalizedUser = normalizeUser(userData);
@@ -115,8 +115,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           localStorage.setItem("cyberxpert-user", JSON.stringify(normalizedUser));
         })
         .catch(() => {
-          // Token is invalid, clear it
-          localStorage.removeItem('auth-token');
+          // Token is invalid, clear all tokens
+          localStorage.removeItem('access-token');
           localStorage.removeItem('refresh-token');
           localStorage.removeItem('cyberxpert-user');
         });
@@ -141,7 +141,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Login function - Django doesn't require role in login
+  // Login function - Django Simple JWT
   const login = async (username: string, password: string, role: UserRole): Promise<boolean> => {
     try {
       setIsLoading(true);
@@ -152,7 +152,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const normalizedUser = normalizeUser(result.user);
         setUser(normalizedUser);
         localStorage.setItem("cyberxpert-user", JSON.stringify(normalizedUser));
-        localStorage.setItem("auth-token", result.token);
+        localStorage.setItem("access-token", result.access);
+        localStorage.setItem("refresh-token", result.refresh);
         
         if (!normalizedUser.is_active) {
           toast.warning("Your account has been suspended. Contact an administrator for assistance.");
@@ -184,7 +185,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const normalizedUser = normalizeUser(result.user);
         setUser(normalizedUser);
         localStorage.setItem("cyberxpert-user", JSON.stringify(normalizedUser));
-        localStorage.setItem("auth-token", result.token);
+        localStorage.setItem("access-token", result.access);
+        localStorage.setItem("refresh-token", result.refresh);
         
         toast.success("Account created successfully!");
         setIsLoading(false);
@@ -209,7 +211,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(null);
       setAllUsers([]);
       localStorage.removeItem("cyberxpert-user");
-      localStorage.removeItem("auth-token");
+      localStorage.removeItem("access-token");
+      localStorage.removeItem("refresh-token");
       navigate("/login");
       toast.success("Logged out successfully");
     }

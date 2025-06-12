@@ -2,14 +2,15 @@
 import { apiRequest } from './api';
 import { User, UserRole, UserStatus } from '@/context/AuthContext';
 
-// API request/response types for Django
+// API request/response types for Django Simple JWT
 export interface LoginRequest {
   username: string;
   password: string;
 }
 
 export interface LoginResponse {
-  token: string;
+  access: string;
+  refresh: string;
   user: User;
 }
 
@@ -37,11 +38,11 @@ export interface UpdateUserRequest {
   avatar?: string;
 }
 
-// Authentication API service for Django
+// Authentication API service for Django Simple JWT
 export const authApi = {
   // User login
   login: async (data: LoginRequest): Promise<LoginResponse> => {
-    return apiRequest<LoginResponse>('/auth/login/', {
+    return apiRequest<LoginResponse>('/auth/token/', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -61,11 +62,24 @@ export const authApi = {
     });
   },
 
-  // User logout
-  logout: async (): Promise<{ detail: string }> => {
-    return apiRequest('/auth/logout/', {
+  // Token refresh
+  refreshToken: async (refreshToken: string): Promise<{ access: string }> => {
+    return apiRequest('/auth/token/refresh/', {
       method: 'POST',
+      body: JSON.stringify({ refresh: refreshToken }),
     });
+  },
+
+  // User logout (blacklist refresh token)
+  logout: async (): Promise<{ detail: string }> => {
+    const refreshToken = localStorage.getItem('refresh-token');
+    if (refreshToken) {
+      return apiRequest('/auth/token/blacklist/', {
+        method: 'POST',
+        body: JSON.stringify({ refresh: refreshToken }),
+      });
+    }
+    return { detail: 'Logged out successfully' };
   },
 
   // Get current user profile
@@ -104,7 +118,7 @@ export const authApi = {
   createUser: async (data: CreateUserRequest): Promise<User> => {
     console.log("=== AUTH API CREATE USER DEBUG ===");
     console.log("Request data:", data);
-    console.log("Current auth token:", localStorage.getItem("auth-token"));
+    console.log("Current access token:", localStorage.getItem("access-token"));
     console.log("Making request to: /admin/users/");
     
     try {
@@ -124,7 +138,7 @@ export const authApi = {
         if (error.message.includes("403") || error.message.includes("Forbidden")) {
           console.error("This is an authorization error. The Django backend is rejecting the request.");
           console.error("Possible causes:");
-          console.error("1. Token is invalid or expired");
+          console.error("1. JWT token is invalid or expired");
           console.error("2. User doesn't have admin permissions on the backend");
           console.error("3. Django permissions are not properly configured");
           console.error("4. CSRF token issues");
