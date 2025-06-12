@@ -1,8 +1,8 @@
 
 import { ENV } from '@/config/env';
 
-// Base API configuration
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ENV.API_BASE_URL;
+// Base API configuration - Updated to use port 8000 for Django backend
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
 
 // Initialize CSRF token for Django
 let csrfToken: string | null = null;
@@ -34,13 +34,13 @@ const getCsrfToken = async (): Promise<string | null> => {
   return null;
 };
 
-// JWT token refresh helper
+// JWT token refresh helper - Updated to use your /token/refresh endpoint
 const refreshAccessToken = async (): Promise<string | null> => {
   const refreshToken = localStorage.getItem('refresh-token');
   if (!refreshToken) return null;
 
   try {
-    const response = await fetch(`${API_BASE_URL}/auth/token/refresh/`, {
+    const response = await fetch(`${API_BASE_URL}/auth/token/refresh`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -161,7 +161,7 @@ const apiRequest = async <T>(endpoint: string, options?: RequestInit): Promise<T
     // Provide more specific error messages based on error type
     if (error instanceof TypeError) {
       if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-        throw new Error('Cannot connect to server. Please ensure:\n• Your Django backend is running\n• CORS is properly configured in your Django settings\n• No firewall is blocking the connection\n• The backend routes are properly set up');
+        throw new Error('Cannot connect to Django server on port 8000. Please ensure:\n• Your Django backend is running on port 8000\n• CORS is properly configured in your Django settings\n• No firewall is blocking the connection\n• The backend routes are properly set up');
       }
     }
     
@@ -171,7 +171,7 @@ const apiRequest = async <T>(endpoint: string, options?: RequestInit): Promise<T
     }
     
     // Fallback for unknown errors
-    throw new Error('An unexpected error occurred while connecting to the server');
+    throw new Error('An unexpected error occurred while connecting to the Django server');
   }
 };
 

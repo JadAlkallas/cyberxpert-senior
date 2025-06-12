@@ -2,7 +2,7 @@
 import { apiRequest } from './api';
 import { User, UserRole, UserStatus } from '@/context/AuthContext';
 
-// API request/response types for Django Simple JWT
+// API request/response types for Django Simple JWT - Updated for your endpoints
 export interface LoginRequest {
   username: string;
   password: string;
@@ -38,11 +38,11 @@ export interface UpdateUserRequest {
   avatar?: string;
 }
 
-// Authentication API service for Django Simple JWT
+// Authentication API service for Django Simple JWT - Updated endpoints
 export const authApi = {
-  // User login
+  // User login - Using your /auth/token endpoint
   login: async (data: LoginRequest): Promise<LoginResponse> => {
-    return apiRequest<LoginResponse>('/auth/token/', {
+    return apiRequest<LoginResponse>('/auth/token', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -62,19 +62,19 @@ export const authApi = {
     });
   },
 
-  // Token refresh
+  // Token refresh - Using your /auth/token/refresh endpoint
   refreshToken: async (refreshToken: string): Promise<{ access: string }> => {
-    return apiRequest('/auth/token/refresh/', {
+    return apiRequest('/auth/token/refresh', {
       method: 'POST',
       body: JSON.stringify({ refresh: refreshToken }),
     });
   },
 
-  // User logout (blacklist refresh token)
+  // User logout - Using your /auth/token/invalidate endpoint
   logout: async (): Promise<{ detail: string }> => {
     const refreshToken = localStorage.getItem('refresh-token');
     if (refreshToken) {
-      return apiRequest('/auth/token/blacklist/', {
+      return apiRequest('/auth/token/invalidate', {
         method: 'POST',
         body: JSON.stringify({ refresh: refreshToken }),
       });
