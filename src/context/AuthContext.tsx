@@ -3,6 +3,7 @@ import { toast } from "@/components/ui/sonner";
 import { useNavigate } from "react-router-dom";
 import { authApi } from "@/services/authApi";
 import { useApi } from "@/hooks/useApi";
+import { decodeJWT } from "@/utils/jwt";
 
 // Updated to match Django backend validation
 export type UserRole = "admin" | "developer";
@@ -136,7 +137,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Login function - Create minimal user object from username and assume admin role for now
+  // Login function - Updated to decode JWT and use actual user data
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
       setIsLoading(true);
@@ -151,29 +152,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         localStorage.setItem("access-token", result.access);
         localStorage.setItem("refresh-token", result.refresh);
         
-        // Create a minimal user object from the username
-        // Since we don't have a user endpoint, we'll create a basic user object
-        const minimalUser: User = {
-          id: "1", // We'll use a default ID since we don't have this from the backend
-          username: username,
-          email: `${username}@example.com`, // Default email format
-          role: "admin", // Default to admin for now - you can change this logic
-          status: "active",
-          is_active: true,
-          createdAt: new Date().toISOString(),
-        };
+        // Decode the JWT token to get user data
+        const tokenData = decodeJWT(result.access);
+        console.log("AuthContext: Decoded token data:", tokenData);
         
-        setUser(minimalUser);
-        localStorage.setItem("cyberxpert-user", JSON.stringify(minimalUser));
-        
-        console.log("AuthContext: User object created:", minimalUser);
-        console.log("AuthContext: Tokens stored successfully");
-        
-        toast.success(`Welcome back, ${username}!`);
-        
-        console.log("AuthContext: Login successful");
-        setIsLoading(false);
-        return true;
+        if (tokenData) {
+          // Create user object from token data
+          const userFromToken: User = {
+            id: tokenData.user_id ? String(tokenData.user_id) : "1",
+            username: tokenData.username || username,
+            email: tokenData.email || `${username}@example.com`,
+            role: tokenData.is_staff ? "admin" : "developer", // Use is_staff to determine role
+            status: "active",
+            is_active: true,
+            createdAt: new Date().toISOString(),
+          };
+          
+          console.log("AuthContext: User object created from token:", userFromToken);
+          
+          setUser(userFromToken);
+          localStorage.setItem("cyberxpert-user", JSON.stringify(userFromToken));
+          
+          console.log("AuthContext: User role set to:", userFromToken.role);
+          console.log("AuthContext: is_staff from token:", tokenData.is_staff);
+          
+          toast.success(`Welcome back, ${username}!`);
+          
+          console.log("AuthContext: Login successful");
+          setIsLoading(false);
+          return true;
+        } else {
+          console.error("AuthContext: Failed to decode token");
+          setIsLoading(false);
+          return false;
+        }
       }
       
       console.log("AuthContext: Login failed - incomplete response");
