@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProviderComponent } from "@/components/ui/tooltip";
@@ -27,14 +26,13 @@ const isUserAdmin = (userRole: string) => {
   return userRole?.toLowerCase() === "admin";
 };
 
-// Protected route wrapper
+// Protected route wrapper - only checks for token
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   
-  console.log("ProtectedRoute: user", user);
   console.log("ProtectedRoute: isAuthenticated", isAuthenticated);
   
-  if (!user) {
+  if (!isAuthenticated) {
     return <Navigate to="/login" />;
   }
   

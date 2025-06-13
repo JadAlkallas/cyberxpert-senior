@@ -102,8 +102,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return userRole?.toLowerCase() === "admin";
   };
 
+  // Check authentication based on token presence only
   const isAuthenticated = !!localStorage.getItem('access-token');
   
+  // Simplified useEffect - only fetch user data if we have a token but no user data
   useEffect(() => {
     const accessToken = localStorage.getItem('access-token');
     if (accessToken && !user) {
