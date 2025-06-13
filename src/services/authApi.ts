@@ -39,9 +39,9 @@ export interface UpdateUserRequest {
 
 // Authentication API service for Django Simple JWT - Updated endpoints
 export const authApi = {
-  // User login - Using your /auth/token endpoint
+  // User login - Using your /auth/token/ endpoint (JWT only, no CSRF)
   login: async (data: LoginRequest): Promise<LoginResponse> => {
-    return apiRequest<LoginResponse>('/auth/token', {
+    return apiRequest<LoginResponse>('/auth/token/', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -61,19 +61,19 @@ export const authApi = {
     });
   },
 
-  // Token refresh - Using your /auth/token/refresh endpoint
+  // Token refresh - Using your /auth/token/refresh/ endpoint
   refreshToken: async (refreshToken: string): Promise<{ access: string }> => {
-    return apiRequest('/auth/token/refresh', {
+    return apiRequest('/auth/token/refresh/', {
       method: 'POST',
       body: JSON.stringify({ refresh: refreshToken }),
     });
   },
 
-  // User logout - Using your /auth/token/invalidate endpoint
+  // User logout - Using your /auth/token/blacklist/ endpoint
   logout: async (): Promise<{ detail: string }> => {
     const refreshToken = localStorage.getItem('refresh-token');
     if (refreshToken) {
-      return apiRequest('/auth/token/invalidate', {
+      return apiRequest('/auth/token/blacklist/', {
         method: 'POST',
         body: JSON.stringify({ refresh: refreshToken }),
       });
@@ -142,7 +142,6 @@ export const authApi = {
           console.error("1. JWT token is invalid or expired");
           console.error("2. User doesn't have admin permissions on the backend");
           console.error("3. Django permissions are not properly configured");
-          console.error("4. CSRF token issues");
         }
       }
       
