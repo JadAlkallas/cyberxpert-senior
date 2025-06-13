@@ -1,8 +1,8 @@
-
 import { createContext, useState, useContext, ReactNode, useEffect } from "react";
 import { User } from "@/context/AuthContext";
 
 export interface VulnerabilityDetail {
+  id: string; // Add unique vulnerability ID
   component: string;
   type: string;
   severity: "Critical" | "High" | "Medium" | "Low";
@@ -10,6 +10,10 @@ export interface VulnerabilityDetail {
   solution: string;
   cveId?: string;
   status?: "fixed" | "in_progress" | "not_addressed";
+  tts: { // Add TTS (Technics, Technology)
+    technics: string;
+    technology: string;
+  };
 }
 
 export interface TestHistoryItem {
@@ -118,21 +122,36 @@ export const useData = () => {
   return context;
 };
 
-// Utility function to generate random vulnerabilities
+// Enhanced utility function to generate random vulnerabilities with ID and TTS
 const generateRandomVulnerabilities = (): VulnerabilityDetail[] => {
   const severities: ("Critical" | "High" | "Medium" | "Low")[] = ["Critical", "High", "Medium", "Low"];
   const statuses: ("fixed" | "in_progress" | "not_addressed")[] = ["fixed", "in_progress", "not_addressed"];
-  const components = ["Auth Module", "Payment Gateway", "Data Storage", "API Endpoint"];
-  const types = ["XSS", "SQL Injection", "CSRF", "Authentication Bypass"];
+  const components = ["Auth Module", "Payment Gateway", "Data Storage", "API Endpoint", "User Interface", "Database Layer"];
+  const types = ["XSS", "SQL Injection", "CSRF", "Authentication Bypass", "Buffer Overflow", "Privilege Escalation"];
+  
+  const technicsOptions = [
+    "Static Analysis", "Dynamic Analysis", "Penetration Testing", "Code Review", 
+    "Fuzzing", "Behavioral Analysis", "Network Scanning", "Vulnerability Assessment"
+  ];
+  
+  const technologyOptions = [
+    "React.js", "Node.js", "PostgreSQL", "REST API", "JWT", "OAuth 2.0", 
+    "Docker", "HTTPS/TLS", "WebSockets", "Express.js", "TypeScript", "Tailwind CSS"
+  ];
 
-  return Array.from({ length: Math.floor(Math.random() * 5) + 1 }, () => ({
+  return Array.from({ length: Math.floor(Math.random() * 8) + 3 }, (_, index) => ({
+    id: `VUL-${Date.now()}-${String(index + 1).padStart(3, '0')}`,
     component: components[Math.floor(Math.random() * components.length)],
     type: types[Math.floor(Math.random() * types.length)],
     severity: severities[Math.floor(Math.random() * severities.length)],
-    description: "A randomly generated vulnerability description.",
-    solution: "Implement the suggested fix to mitigate this vulnerability.",
-    cveId: `CVE-${Math.floor(Math.random() * 9999)}-${Math.floor(Math.random() * 99999)}`,
-    status: statuses[Math.floor(Math.random() * statuses.length)]
+    description: `Security vulnerability detected in ${components[Math.floor(Math.random() * components.length)]} requiring immediate attention.`,
+    solution: "Implement the suggested security patches and follow best practices for secure coding.",
+    cveId: `CVE-${new Date().getFullYear()}-${Math.floor(Math.random() * 99999).toString().padStart(5, '0')}`,
+    status: statuses[Math.floor(Math.random() * statuses.length)],
+    tts: {
+      technics: technicsOptions[Math.floor(Math.random() * technicsOptions.length)],
+      technology: technologyOptions[Math.floor(Math.random() * technologyOptions.length)]
+    }
   }));
 };
 
@@ -297,7 +316,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       });
     }
 
-    // Generate a new test result
+    // Generate a new test result with enhanced vulnerabilities
     const newTest: TestHistoryItem = {
       id: `test-${Date.now()}`,
       date: new Date().toLocaleDateString(),
