@@ -81,8 +81,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   
   const navigate = useNavigate();
 
-  // API hooks
-  const loginApi = useApi(authApi.login);
+  // API hooks - Updated loginApi to not show error toast automatically
+  const loginApi = useApi(authApi.login, {
+    showErrorToast: false // We'll handle login errors manually
+  });
   const signupApi = useApi(authApi.signup);
   const logoutApi = useApi(authApi.logout);
   const updateProfileApi = useApi(authApi.updateProfile, {
@@ -155,7 +157,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Login function - Updated to decode JWT and use actual user data
+  // Login function - Updated to handle suspended accounts better
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
       setIsLoading(true);
@@ -206,11 +208,41 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       }
       
+      // Handle login failure with better error messages
+      if (loginApi.error) {
+        console.log("AuthContext: Login failed with error:", loginApi.error);
+        
+        // Check if the error indicates a suspended account
+        if (loginApi.error.includes("No active account found with the given credentials")) {
+          toast.error("Your account has been suspended. Please contact an administrator to reactivate your account.");
+        } else if (loginApi.error.includes("Invalid credentials") || loginApi.error.includes("authentication failed")) {
+          toast.error("Login failed. Please check your username and password.");
+        } else {
+          toast.error("Login failed. Please try again or contact support if the problem persists.");
+        }
+      } else {
+        toast.error("Login failed. Please check your credentials.");
+      }
+      
       console.log("AuthContext: Login failed - incomplete response");
       setIsLoading(false);
       return false;
     } catch (error) {
       console.error("AuthContext: Login error:", error);
+      
+      // Handle specific error cases
+      if (error instanceof Error) {
+        if (error.message.includes("No active account found with the given credentials")) {
+          toast.error("Your account has been suspended. Please contact an administrator to reactivate your account.");
+        } else if (error.message.includes("Invalid credentials")) {
+          toast.error("Login failed. Please check your username and password.");
+        } else {
+          toast.error("Login failed. Please try again or contact support if the problem persists.");
+        }
+      } else {
+        toast.error("Login failed. Please check your credentials.");
+      }
+      
       setIsLoading(false);
       return false;
     }

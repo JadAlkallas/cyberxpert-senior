@@ -38,6 +38,7 @@ const LoginForm = () => {
     if (!validate()) return;
     
     setIsSubmitting(true);
+    setErrors({}); // Clear any previous errors
     
     try {
       console.log("LoginForm: Attempting login for username:", username);
@@ -52,11 +53,11 @@ const LoginForm = () => {
         navigate("/action");
       } else {
         console.log("LoginForm: Login failed");
-        setErrors({ general: "Login failed. Please check your credentials." });
+        // Error message is now handled by AuthContext, no need to set generic error
       }
     } catch (error) {
       console.error("LoginForm: Login error:", error);
-      setErrors({ general: "An error occurred during login. Please try again." });
+      // Error message is now handled by AuthContext, no need to set generic error
     } finally {
       setIsSubmitting(false);
     }
@@ -64,12 +65,6 @@ const LoginForm = () => {
   
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {errors.general && (
-        <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded">
-          {errors.general}
-        </div>
-      )}
-      
       <div className="space-y-2">
         <label htmlFor="username" className="block text-sm font-medium">
           Username
