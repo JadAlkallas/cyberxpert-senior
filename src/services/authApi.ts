@@ -37,9 +37,9 @@ export interface UpdateUserRequest {
   avatar?: string;
 }
 
-// Authentication API service for Django Simple JWT - Updated to handle token-only response
+// Authentication API service for Django Simple JWT - Updated to match your actual endpoints
 export const authApi = {
-  // User login - Now only expects tokens from /auth/token
+  // User login - POST /api/auth/token
   login: async (data: LoginRequest): Promise<LoginResponse> => {
     return apiRequest<LoginResponse>('/auth/token', {
       method: 'POST',
@@ -47,7 +47,7 @@ export const authApi = {
     });
   },
 
-  // User signup
+  // User signup - Using create developer endpoint
   signup: async (data: SignupRequest): Promise<LoginResponse> => {
     // Add password confirmation for Django
     const signupData = {
@@ -55,13 +55,13 @@ export const authApi = {
       password2: data.password,
     };
     
-    return apiRequest<LoginResponse>('/auth/register/', {
+    return apiRequest<LoginResponse>('/admin/create/developer', {
       method: 'POST',
       body: JSON.stringify(signupData),
     });
   },
 
-  // Token refresh - Using your /auth/token/refresh endpoint (no trailing slash)
+  // Token refresh - POST /api/auth/token/refresh
   refreshToken: async (refreshToken: string): Promise<{ access: string }> => {
     return apiRequest('/auth/token/refresh', {
       method: 'POST',
@@ -69,7 +69,7 @@ export const authApi = {
     });
   },
 
-  // User logout - Using your /auth/token/invalidate endpoint (no trailing slash)
+  // User logout - POST /api/auth/token/invalidate
   logout: async (): Promise<{ detail: string }> => {
     const refreshToken = localStorage.getItem('refresh-token');
     if (refreshToken) {
@@ -81,20 +81,20 @@ export const authApi = {
     return { detail: 'Logged out successfully' };
   },
 
-  // Get current user profile
+  // Get current user profile - GET /api/developer/profile
   getProfile: async (): Promise<DjangoUser> => {
-    return apiRequest('/auth/user/');
+    return apiRequest('/developer/profile');
   },
 
-  // Update user profile
+  // Update user profile - PATCH /api/developer/profile/update
   updateProfile: async (data: UpdateUserRequest): Promise<DjangoUser> => {
-    return apiRequest('/auth/user/', {
+    return apiRequest('/developer/profile/update', {
       method: 'PATCH',
       body: JSON.stringify(data),
     });
   },
 
-  // Upload avatar
+  // Upload avatar (keeping original endpoint as it's not shown in your image)
   uploadAvatar: async (file: File): Promise<string> => {
     const formData = new FormData();
     formData.append('avatar', file);
@@ -108,22 +108,37 @@ export const authApi = {
     }).then(response => response.avatar_url);
   },
 
-  // Admin: Get all users
+  // Admin: Get all users - combining developers and admins
   getAllUsers: async (): Promise<DjangoUser[]> => {
-    const response = await apiRequest<PaginatedResponse<DjangoUser> | DjangoUser[]>('/admin/users/');
-    // Handle both paginated and non-paginated responses
-    return Array.isArray(response) ? response : response.results;
+    try {
+      // Get both developers and admins
+      const [developers, admins] = await Promise.all([
+        apiRequest<PaginatedResponse<DjangoUser> | DjangoUser[]>('/admin/get/developers'),
+        apiRequest<PaginatedResponse<DjangoUser> | DjangoUser[]>('/admin/get/admins')
+      ]);
+      
+      // Handle both paginated and non-paginated responses
+      const devList = Array.isArray(developers) ? developers : developers.results;
+      const adminList = Array.isArray(admins) ? admins : admins.results;
+      
+      return [...devList, ...adminList];
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      return [];
+    }
   },
 
-  // Admin: Create user account
+  // Admin: Create user account - POST /api/admin/create/developer or /api/admin/create/admin
   createUser: async (data: CreateUserRequest): Promise<DjangoUser> => {
     console.log("=== AUTH API CREATE USER DEBUG ===");
     console.log("Request data:", data);
     console.log("Current access token:", localStorage.getItem("access-token"));
-    console.log("Making request to: /admin/users/");
+    
+    const endpoint = data.role === 'admin' ? '/admin/create/admin' : '/admin/create/developer';
+    console.log("Making request to:", endpoint);
     
     try {
-      const result = await apiRequest<DjangoUser>('/admin/users/', {
+      const result = await apiRequest<DjangoUser>(endpoint, {
         method: 'POST',
         body: JSON.stringify(data),
       });
@@ -149,18 +164,56 @@ export const authApi = {
     }
   },
 
-  // Admin: Update user
-  updateUser: async (userId: string, data: UpdateUserRequest): Promise<DjangoUser> => {
-    return apiRequest(`/admin/users/${userId}/`, {
+  // Admin: Update user - PATCH /api/admin/update/developer/{id} or /api/admin/update/admin/{id}
+  updateUser: async (userId: string, data: UpdateUserRequest & { role?: UserRole }): Promise<DjangoUser> => {
+    const endpoint = data.role === 'admin' ? `/admin/update/admin/${userId}` : `/admin/update/developer/${userId}`;
+    return apiRequest(endpoint, {
       method: 'PATCH',
       body: JSON.stringify(data),
     });
   },
 
-  // Admin: Delete user
-  deleteUser: async (userId: string): Promise<{ detail: string }> => {
-    return apiRequest(`/admin/users/${userId}/`, {
+  // Admin: Delete user - DELETE /api/admin/delete/developer/{id} or /api/admin/delete/admin/{id}
+  deleteUser: async (userId: string, role: UserRole): Promise<{ detail: string }> => {
+    const endpoint = role === 'admin' ? `/admin/delete/admin/${userId}` : `/admin/delete/developer/${userId}`;
+    return apiRequest(endpoint, {
       method: 'DELETE',
+    });
+  },
+
+  // Admin: Activate user - PATCH /api/admin/update/developer/{id}/activate or /api/admin/update/admin/{id}/activate
+  activateUser: async (userId: string, role: UserRole): Promise<DjangoUser> => {
+    const endpoint = role === 'admin' ? `/admin/update/admin/${userId}/activate` : `/admin/update/developer/${userId}/activate`;
+    return apiRequest(endpoint, {
+      method: 'PATCH',
+    });
+  },
+
+  // Admin: Deactivate user - PATCH /api/admin/update/developer/{id}/deactivate or /api/admin/update/admin/{id}/deactivate
+  deactivateUser: async (userId: string, role: UserRole): Promise<DjangoUser> => {
+    const endpoint = role === 'admin' ? `/admin/update/admin/${userId}/deactivate` : `/admin/update/developer/${userId}/deactivate`;
+    return apiRequest(endpoint, {
+      method: 'PATCH',
+    });
+  },
+
+  // Admin: Update password - PATCH /api/admin/update/developer/{id}/password or /api/admin/update/admin/{id}/password
+  updateUserPassword: async (userId: string, role: UserRole, password: string): Promise<DjangoUser> => {
+    const endpoint = role === 'admin' ? `/admin/update/admin/${userId}/password` : `/admin/update/developer/${userId}/password`;
+    return apiRequest(endpoint, {
+      method: 'PATCH',
+      body: JSON.stringify({ password }),
+    });
+  },
+
+  // Developer: Change password - PATCH /api/developer/change-password
+  changePassword: async (currentPassword: string, newPassword: string): Promise<{ detail: string }> => {
+    return apiRequest('/developer/change-password', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        current_password: currentPassword,
+        new_password: newPassword,
+      }),
     });
   },
 };

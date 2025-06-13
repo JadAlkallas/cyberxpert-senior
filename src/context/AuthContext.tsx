@@ -1,4 +1,3 @@
-
 import { createContext, useState, useContext, ReactNode, useEffect } from "react";
 import { toast } from "@/components/ui/sonner";
 import { useNavigate } from "react-router-dom";
@@ -91,6 +90,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     showSuccessToast: true
   });
   const deleteUserApi = useApi(authApi.deleteUser, {
+    showSuccessToast: true
+  });
+  const activateUserApi = useApi(authApi.activateUser, {
+    showSuccessToast: true
+  });
+  const deactivateUserApi = useApi(authApi.deactivateUser, {
     showSuccessToast: true
   });
   const uploadAvatarApi = useApi(authApi.uploadAvatar, {
@@ -321,16 +326,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
   
   const deleteDevAccount = async (userId: string): Promise<boolean> => {
-    const result = await deleteUserApi.execute(userId);
+    const userToDelete = allUsers.find(u => u.id === userId);
+    if (!userToDelete) return false;
+
+    const result = await deleteUserApi.execute(userId, userToDelete.role);
     
     if (result) {
-      const userToDelete = allUsers.find(u => u.id === userId);
       setAllUsers(prev => prev.filter(u => u.id !== userId));
-      
-      if (userToDelete) {
-        toast.success(`Deleted user: ${userToDelete.username}`);
-      }
-      
+      toast.success(`Deleted user: ${userToDelete.username}`);
       return true;
     }
     
@@ -338,7 +341,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
   
   const updateDevStatus = async (userId: string, status: UserStatus): Promise<boolean> => {
-    const result = await updateUserApi.execute(userId, { is_active: status === 'active' });
+    const userToUpdate = allUsers.find(u => u.id === userId);
+    if (!userToUpdate) return false;
+
+    let result;
+    if (status === 'active') {
+      result = await activateUserApi.execute(userId, userToUpdate.role);
+    } else {
+      result = await deactivateUserApi.execute(userId, userToUpdate.role);
+    }
     
     if (result) {
       const normalizedUser = normalizeUser(result);
