@@ -1,16 +1,17 @@
 
+
 import { ENV } from '@/config/env';
 
 // Base API configuration - Updated to use port 8000 for Django backend
 const API_BASE_URL = ENV.API_BASE_URL;
 
-// JWT token refresh helper - Updated to use your /token/refresh endpoint
+// JWT token refresh helper - Updated to use your /token/refresh endpoint (no trailing slash)
 const refreshAccessToken = async (): Promise<string | null> => {
   const refreshToken = localStorage.getItem('refresh-token');
   if (!refreshToken) return null;
 
   try {
-    const response = await fetch(`${API_BASE_URL}/auth/token/refresh/`, {
+    const response = await fetch(`${API_BASE_URL}/auth/token/refresh`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

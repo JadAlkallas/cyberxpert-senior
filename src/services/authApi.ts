@@ -37,11 +37,11 @@ export interface UpdateUserRequest {
   avatar?: string;
 }
 
-// Authentication API service for Django Simple JWT - Updated endpoints
+// Authentication API service for Django Simple JWT - Updated endpoints to match your backend
 export const authApi = {
-  // User login - Using your /auth/token/ endpoint (JWT only, no CSRF)
+  // User login - Using your /auth/token endpoint (no trailing slash)
   login: async (data: LoginRequest): Promise<LoginResponse> => {
-    return apiRequest<LoginResponse>('/auth/token/', {
+    return apiRequest<LoginResponse>('/auth/token', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -61,19 +61,19 @@ export const authApi = {
     });
   },
 
-  // Token refresh - Using your /auth/token/refresh/ endpoint
+  // Token refresh - Using your /auth/token/refresh endpoint (no trailing slash)
   refreshToken: async (refreshToken: string): Promise<{ access: string }> => {
-    return apiRequest('/auth/token/refresh/', {
+    return apiRequest('/auth/token/refresh', {
       method: 'POST',
       body: JSON.stringify({ refresh: refreshToken }),
     });
   },
 
-  // User logout - Using your /auth/token/blacklist/ endpoint
+  // User logout - Using your /auth/token/invalidate endpoint (no trailing slash)
   logout: async (): Promise<{ detail: string }> => {
     const refreshToken = localStorage.getItem('refresh-token');
     if (refreshToken) {
-      return apiRequest('/auth/token/blacklist/', {
+      return apiRequest('/auth/token/invalidate', {
         method: 'POST',
         body: JSON.stringify({ refresh: refreshToken }),
       });
