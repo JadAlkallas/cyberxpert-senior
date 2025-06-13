@@ -30,9 +30,9 @@ const Sidebar = () => {
   const pendingUsersCount = isUserAdmin(user.role || '') ? 
     JSON.parse(localStorage.getItem("cyberxpert-pending-users") || "[]").length : 0;
   
-  // Get unread reports count - only show for new reports
+  // Get unread reports count - just check for unread reports
   const unreadReportsCount = isUserAdmin(user.role || '') ? 
-    reports.filter(report => !report.read && report.isNew).length : 0;
+    reports.filter(report => !report.read).length : 0;
   
   // Build menu items dynamically based on user role
   const menuItems = [

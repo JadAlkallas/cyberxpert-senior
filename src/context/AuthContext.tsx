@@ -1,4 +1,3 @@
-
 import { createContext, useState, useContext, ReactNode, useEffect } from "react";
 import { toast } from "@/components/ui/sonner";
 import { useNavigate } from "react-router-dom";
@@ -126,7 +125,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (token) {
       const tokenData = decodeJWT(token);
       if (tokenData && user) {
-        const refreshedUser = {
+        const refreshedUser: User = {
           ...user,
           role: tokenData.is_staff ? "admin" : "developer",
           status: user.is_active ? "active" : "suspended",
