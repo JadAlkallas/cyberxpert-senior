@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,7 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import { AvatarUpload } from "@/components/ui/avatar-upload";
 
 const Account = () => {
-  const { user, updateUserProfile, uploadAvatar } = useAuth();
+  const { user, updateUserProfile, uploadAvatar, refreshCurrentUser } = useAuth();
   const { analyticsData } = useData();
   
   const [isUpdating, setIsUpdating] = useState(false);
@@ -26,6 +25,17 @@ const Account = () => {
     confirmPassword: ""
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  
+  // Update form data when user changes
+  useEffect(() => {
+    if (user) {
+      setFormData(prev => ({
+        ...prev,
+        username: user.username || "",
+        email: user.email || "",
+      }));
+    }
+  }, [user]);
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -72,25 +82,35 @@ const Account = () => {
     setIsUpdating(true);
     
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Update user profile
-      updateUserProfile({
+      console.log("Updating profile with data:", {
         username: formData.username,
         email: formData.email,
       });
       
-      // Clear password fields
-      setFormData(prev => ({
-        ...prev,
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: ""
-      }));
+      // Update user profile
+      const success = await updateUserProfile({
+        username: formData.username,
+        email: formData.email,
+      });
       
-      toast.success("Profile updated successfully");
+      if (success) {
+        // Refresh current user state to ensure UI is updated
+        refreshCurrentUser();
+        
+        // Clear password fields
+        setFormData(prev => ({
+          ...prev,
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: ""
+        }));
+        
+        console.log("Profile updated successfully");
+      } else {
+        toast.error("Failed to update profile");
+      }
     } catch (error) {
+      console.error("Profile update error:", error);
       toast.error("Failed to update profile");
     } finally {
       setIsUpdating(false);
@@ -100,6 +120,9 @@ const Account = () => {
   const handleAvatarUpload = async (file: File): Promise<string | null> => {
     return await uploadAvatar(file);
   };
+  
+  // Check if account is suspended and show appropriate message
+  const isAccountSuspended = user?.status === 'suspended' || !user?.is_active;
   
   return (
     <div className="min-h-screen flex flex-col">
@@ -113,12 +136,24 @@ const Account = () => {
             <div className="mb-8">
               <h1 className="text-3xl font-bold mb-2">Account</h1>
               <p className="text-gray-600">Manage your account settings and view analytics</p>
+              
+              {/* Account Status Warning */}
+              {isAccountSuspended && (
+                <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="flex items-center">
+                    <div className="text-red-600 font-medium">Account Suspended</div>
+                  </div>
+                  <div className="text-red-700 text-sm mt-1">
+                    Your account has been suspended. Please contact an administrator for assistance.
+                  </div>
+                </div>
+              )}
             </div>
             
             <Tabs defaultValue="dashboard">
               <TabsList className="mb-6">
                 <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-                <TabsTrigger value="settings">Settings</TabsTrigger>
+                <TabsTrigger value="settings" disabled={isAccountSuspended}>Settings</TabsTrigger>
               </TabsList>
               
               <TabsContent value="dashboard" className="space-y-6">
@@ -236,7 +271,7 @@ const Account = () => {
                             type="text"
                             value={formData.username}
                             onChange={handleInputChange}
-                            disabled={isUpdating}
+                            disabled={isUpdating || isAccountSuspended}
                             className={errors.username ? "border-red-500" : ""}
                           />
                           {errors.username && (
@@ -254,7 +289,7 @@ const Account = () => {
                             type="email"
                             value={formData.email}
                             onChange={handleInputChange}
-                            disabled={isUpdating}
+                            disabled={isUpdating || isAccountSuspended}
                             className={errors.email ? "border-red-500" : ""}
                           />
                           {errors.email && (
@@ -276,7 +311,7 @@ const Account = () => {
                                 type="password"
                                 value={formData.currentPassword}
                                 onChange={handleInputChange}
-                                disabled={isUpdating}
+                                disabled={isUpdating || isAccountSuspended}
                                 className={errors.currentPassword ? "border-red-500" : ""}
                               />
                               {errors.currentPassword && (
@@ -294,7 +329,7 @@ const Account = () => {
                                 type="password"
                                 value={formData.newPassword}
                                 onChange={handleInputChange}
-                                disabled={isUpdating}
+                                disabled={isUpdating || isAccountSuspended}
                                 className={errors.newPassword ? "border-red-500" : ""}
                               />
                               {errors.newPassword && (
@@ -312,7 +347,7 @@ const Account = () => {
                                 type="password"
                                 value={formData.confirmPassword}
                                 onChange={handleInputChange}
-                                disabled={isUpdating}
+                                disabled={isUpdating || isAccountSuspended}
                                 className={errors.confirmPassword ? "border-red-500" : ""}
                               />
                               {errors.confirmPassword && (
@@ -323,7 +358,7 @@ const Account = () => {
                         </div>
                         
                         <div className="pt-4">
-                          <Button type="submit" disabled={isUpdating}>
+                          <Button type="submit" disabled={isUpdating || isAccountSuspended}>
                             {isUpdating ? (
                               <>
                                 <Loader className="mr-2 h-4 w-4 animate-spin" />
@@ -350,15 +385,24 @@ const Account = () => {
                           currentAvatarUrl={user?.avatarUrl}
                           username={user?.username || ""}
                           onUpload={handleAvatarUpload}
-                          disabled={isUpdating}
+                          disabled={isUpdating || isAccountSuspended}
                         />
                         
                         <div className="text-center mt-4">
-                          <h3 className="text-lg font-medium">{user?.username}</h3>
-                          <span className="text-sm text-gray-500">{user?.email}</span>
-                          <span className="mt-1 text-xs px-2 py-1 bg-gray-100 rounded-full block">
-                            {user?.role} Account
-                          </span>
+                          <h3 className="text-lg font-medium">{user?.username || "Unknown"}</h3>
+                          <span className="text-sm text-gray-500">{user?.email || "Unknown"}</span>
+                          <div className="mt-1 flex flex-col gap-1">
+                            <span className="text-xs px-2 py-1 bg-gray-100 rounded-full">
+                              {user?.role || "Unknown"} Account
+                            </span>
+                            <span className={`text-xs px-2 py-1 rounded-full ${
+                              user?.status === 'active' 
+                                ? 'bg-green-100 text-green-800' 
+                                : 'bg-red-100 text-red-800'
+                            }`}>
+                              {user?.status === 'active' ? 'Active' : 'Suspended'}
+                            </span>
+                          </div>
                         </div>
                       </div>
                       
@@ -369,7 +413,15 @@ const Account = () => {
                         </div>
                         <div className="flex justify-between py-2">
                           <span className="text-sm text-gray-500">Role</span>
-                          <span className="text-sm">{user?.role}</span>
+                          <span className="text-sm">{user?.role || "Unknown"}</span>
+                        </div>
+                        <div className="flex justify-between py-2">
+                          <span className="text-sm text-gray-500">Status</span>
+                          <span className={`text-sm ${
+                            user?.status === 'active' ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            {user?.status === 'active' ? 'Active' : 'Suspended'}
+                          </span>
                         </div>
                       </div>
                     </CardContent>

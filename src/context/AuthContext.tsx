@@ -1,3 +1,4 @@
+
 import { createContext, useState, useContext, ReactNode, useEffect } from "react";
 import { toast } from "@/components/ui/sonner";
 import { useNavigate } from "react-router-dom";
@@ -36,6 +37,7 @@ interface AuthContextType {
   deleteDevAccount: (userId: string) => Promise<boolean>;
   updateDevStatus: (userId: string, status: UserStatus) => Promise<boolean>;
   refreshUsers: () => Promise<void>;
+  refreshCurrentUser: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -117,7 +119,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Check authentication based on token presence only
   const isAuthenticated = !!localStorage.getItem('access-token');
   
-  // No useEffect for fetching user data since we don't have that endpoint
+  // Helper function to refresh current user state
+  const refreshCurrentUser = () => {
+    console.log("Refreshing current user state");
+    const token = localStorage.getItem('access-token');
+    if (token) {
+      const tokenData = decodeJWT(token);
+      if (tokenData && user) {
+        const refreshedUser = {
+          ...user,
+          role: tokenData.is_staff ? "admin" : "developer",
+          status: user.is_active ? "active" : "suspended",
+        };
+        console.log("Refreshed user:", refreshedUser);
+        setUser(refreshedUser);
+        localStorage.setItem("cyberxpert-user", JSON.stringify(refreshedUser));
+      }
+    }
+  };
 
   // Load all users for admin
   useEffect(() => {
@@ -163,7 +182,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             username: tokenData.username || username,
             email: tokenData.email || `${username}@example.com`,
             role: tokenData.is_staff ? "admin" : "developer", // Use is_staff to determine role
-            status: "active",
+            status: "active", // Default to active on login
             is_active: true,
             createdAt: new Date().toISOString(),
           };
@@ -257,6 +276,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const updateUserProfile = async (updates: Partial<User>): Promise<boolean> => {
     if (!user) return false;
     
+    console.log("Updating user profile with:", updates);
+    
     // Convert to Django format
     const djangoUpdates = {
       username: updates.username,
@@ -269,6 +290,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     if (result) {
       const normalizedUser = normalizeUser(result);
+      console.log("Profile update result:", normalizedUser);
+      
+      // Update current user state
       setUser(normalizedUser);
       localStorage.setItem("cyberxpert-user", JSON.stringify(normalizedUser));
       
@@ -277,6 +301,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         u.id === user.id ? { ...u, ...normalizedUser } : u
       ));
       
+      console.log("User profile updated successfully");
       return true;
     }
     
@@ -395,8 +420,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       // If the currently logged in user is being updated, update their session too
       if (user && user.id === userId) {
-        setUser(normalizedUser);
-        localStorage.setItem("cyberxpert-user", JSON.stringify(normalizedUser));
+        console.log("Updating current user status to:", status);
+        const updatedCurrentUser = { ...user, status, is_active: status === 'active' };
+        setUser(updatedCurrentUser);
+        localStorage.setItem("cyberxpert-user", JSON.stringify(updatedCurrentUser));
+        
+        // If user is suspended, they should be logged out
+        if (status === 'suspended') {
+          toast.warning("Your account has been suspended. You will be logged out.");
+          setTimeout(() => logout(), 2000);
+        }
       }
       
       return true;
@@ -419,7 +452,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       addDevAccount,
       deleteDevAccount,
       updateDevStatus,
-      refreshUsers
+      refreshUsers,
+      refreshCurrentUser
     }}>
       {children}
     </AuthContext.Provider>
