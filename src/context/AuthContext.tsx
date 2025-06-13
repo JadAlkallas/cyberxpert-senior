@@ -102,7 +102,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return userRole?.toLowerCase() === "admin";
   };
 
-  const isAuthenticated = !!user && (user.is_active || isUserAdmin(user.role));
+  const isAuthenticated = !!localStorage.getItem('access-token');
   
   useEffect(() => {
     const accessToken = localStorage.getItem('access-token');
@@ -141,35 +141,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Login function - Now expects user data directly from token endpoint
+  // Login function - Now only handles tokens without user data
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
       setIsLoading(true);
       console.log("AuthContext: Starting login for username:", username);
       
-      // Get tokens AND user data from login endpoint
+      // Get tokens from login endpoint (no user data expected)
       const result = await loginApi.execute({ username, password });
       console.log("AuthContext: Login API result:", result);
       
-      if (result && result.access && result.refresh && result.user) {
+      if (result && result.access && result.refresh) {
         // Store tokens
         localStorage.setItem("access-token", result.access);
         localStorage.setItem("refresh-token", result.refresh);
         
-        console.log("AuthContext: Tokens stored, processing user data...");
+        console.log("AuthContext: Tokens stored successfully");
         
-        // Process user data that came with the tokens
-        const normalizedUser = normalizeUser(result.user);
-        console.log("AuthContext: Normalized user:", normalizedUser);
-        
-        setUser(normalizedUser);
-        localStorage.setItem("cyberxpert-user", JSON.stringify(normalizedUser));
-        
-        if (!normalizedUser.is_active) {
-          toast.warning("Your account has been suspended. Contact an administrator for assistance.");
-        } else {
-          toast.success(`Welcome back, ${username}!`);
-        }
+        toast.success(`Welcome back, ${username}!`);
         
         console.log("AuthContext: Login successful");
         setIsLoading(false);
