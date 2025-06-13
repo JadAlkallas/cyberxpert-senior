@@ -18,8 +18,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
-// Updated form schema to use first name and last name instead of username
+// Updated form schema to include username as optional field
 const accountSchema = z.object({
+  username: z.string().optional(),
   firstName: z.string().min(2, {
     message: "First name must be at least 2 characters"
   }),
@@ -54,6 +55,7 @@ const AdminUsers = () => {
   const form = useForm<AccountFormValues>({
     resolver: zodResolver(accountSchema),
     defaultValues: {
+      username: "",
       firstName: "",
       lastName: "",
       email: "",
@@ -96,8 +98,8 @@ const AdminUsers = () => {
   
   const onSubmit = async (values: AccountFormValues) => {
     setIsSubmitting(true);
-    // Create username from first name and last name
-    const username = `${values.firstName.toLowerCase()}.${values.lastName.toLowerCase()}`;
+    // Use provided username or create one from first name and last name
+    const username = values.username?.trim() || `${values.firstName.toLowerCase()}.${values.lastName.toLowerCase()}`;
     const result = await addDevAccount(username, values.email, values.password, values.role, values.status);
     if (result) {
       form.reset();
@@ -232,6 +234,23 @@ const AdminUsers = () => {
                   <CardContent>
                     <Form {...form}>
                       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                        <FormField 
+                          control={form.control} 
+                          name="username" 
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Username (Optional)</FormLabel>
+                              <FormControl>
+                                <Input placeholder="johndoe (leave empty to auto-generate)" {...field} />
+                              </FormControl>
+                              <FormDescription>
+                                If left empty, username will be generated as firstname.lastname
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )} 
+                        />
+                        
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <FormField 
                             control={form.control} 
