@@ -40,15 +40,23 @@ const LoginForm = () => {
     setIsSubmitting(true);
     
     try {
-      // Try developer role first, then admin if that fails
-      let success = await login(username, password, "developer");
-      if (!success) {
-        success = await login(username, password, "admin");
-      }
+      console.log("LoginForm: Attempting login for username:", username);
+      
+      // Call login without role parameter - Django will determine role from user data
+      const success = await login(username, password);
+      
+      console.log("LoginForm: Login result:", success);
       
       if (success) {
+        console.log("LoginForm: Login successful, navigating to /action");
         navigate("/action");
+      } else {
+        console.log("LoginForm: Login failed");
+        setErrors({ general: "Login failed. Please check your credentials." });
       }
+    } catch (error) {
+      console.error("LoginForm: Login error:", error);
+      setErrors({ general: "An error occurred during login. Please try again." });
     } finally {
       setIsSubmitting(false);
     }
@@ -56,6 +64,12 @@ const LoginForm = () => {
   
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {errors.general && (
+        <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded">
+          {errors.general}
+        </div>
+      )}
+      
       <div className="space-y-2">
         <label htmlFor="username" className="block text-sm font-medium">
           Username

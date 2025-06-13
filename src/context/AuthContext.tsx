@@ -1,4 +1,3 @@
-
 import { createContext, useState, useContext, ReactNode, useEffect } from "react";
 import { toast } from "@/components/ui/sonner";
 import { useNavigate } from "react-router-dom";
@@ -27,7 +26,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   allUsers: User[];
   isLoading: boolean;
-  login: (username: string, password: string, role: UserRole) => Promise<boolean>;
+  login: (username: string, password: string) => Promise<boolean>; // Removed role parameter
   signup: (username: string, email: string, password: string, role: UserRole) => Promise<boolean>;
   logout: () => void;
   updateUserProfile: (updates: Partial<User>) => Promise<boolean>;
@@ -142,15 +141,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Login function - Django Simple JWT
-  const login = async (username: string, password: string, role: UserRole): Promise<boolean> => {
+  // Login function - Django Simple JWT (removed role parameter)
+  const login = async (username: string, password: string): Promise<boolean> => {
     try {
       setIsLoading(true);
+      console.log("AuthContext: Starting login for username:", username);
       
       const result = await loginApi.execute({ username, password });
+      console.log("AuthContext: Login API result:", result);
       
       if (result) {
         const normalizedUser = normalizeUser(result.user);
+        console.log("AuthContext: Normalized user:", normalizedUser);
+        
         setUser(normalizedUser);
         localStorage.setItem("cyberxpert-user", JSON.stringify(normalizedUser));
         localStorage.setItem("access-token", result.access);
@@ -162,14 +165,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           toast.success(`Welcome back, ${username}!`);
         }
         
+        console.log("AuthContext: Login successful");
         setIsLoading(false);
         return true;
       }
       
+      console.log("AuthContext: Login failed - no result");
       setIsLoading(false);
       return false;
     } catch (error) {
-      console.error("Login error:", error);
+      console.error("AuthContext: Login error:", error);
       setIsLoading(false);
       return false;
     }
