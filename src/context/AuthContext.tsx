@@ -442,12 +442,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
     
     if (result) {
-      const normalizedUser = normalizeUser(result);
+      // Instead of normalizing the API response (which is just a message),
+      // manually update the user object with the new status
+      const updatedUser: User = {
+        ...userToUpdate,
+        status: status,
+        is_active: status === 'active'
+      };
+      
+      console.log("Updated user object:", updatedUser);
+      
       setAllUsers(prev => prev.map(u => 
-        u.id === userId ? normalizedUser : u
+        u.id === userId ? updatedUser : u
       ));
       
-      toast.success(`Updated ${normalizedUser.username}'s status to ${status}`);
+      toast.success(`Updated ${updatedUser.username}'s status to ${status}`);
       
       // If the currently logged in user is being updated, update their session too
       if (user && user.id === userId) {
