@@ -175,17 +175,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Signup function
+  // Signup function - Updated to handle token-only response
   const signup = async (username: string, email: string, password: string, role: UserRole): Promise<boolean> => {
     try {
       setIsLoading(true);
       
       const result = await signupApi.execute({ username, email, password, password2: password, role });
       
-      if (result) {
-        const normalizedUser = normalizeUser(result.user);
-        setUser(normalizedUser);
-        localStorage.setItem("cyberxpert-user", JSON.stringify(normalizedUser));
+      if (result && result.access && result.refresh) {
+        // Store tokens
         localStorage.setItem("access-token", result.access);
         localStorage.setItem("refresh-token", result.refresh);
         
