@@ -4,9 +4,10 @@ import { cn } from "@/lib/utils";
 import { ReportItem as ReportItemType } from "@/context/DataContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp, Download, Activity } from "lucide-react";
+import { ChevronDown, ChevronUp, Download } from "lucide-react";
 import CircleProgressChart from "../dashboard/CircleProgressChart";
 import { useData } from "@/context/DataContext";
+import { toast } from "sonner";
 
 interface ReportItemProps {
   report: ReportItemType;
@@ -15,7 +16,7 @@ interface ReportItemProps {
 
 const ReportItem = ({ report, showCreator = false }: ReportItemProps) => {
   const [expanded, setExpanded] = useState(false);
-  const { testHistory } = useData();
+  const { testHistory, addReport } = useData();
   
   // Find the associated test to get vulnerability details
   const associatedTest = testHistory.find(test => 
@@ -30,11 +31,11 @@ const ReportItem = ({ report, showCreator = false }: ReportItemProps) => {
     day: 'numeric'
   });
   
-  // Handle enhanced PDF download with vulnerability IDs and TTS
+  // Handle enhanced PDF download with vulnerability IDs and TTS (no activity diagrams)
   const handleDownload = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent expanding/collapsing when clicking download
     
-    // Create enhanced content for PDF with vulnerability details
+    // Create enhanced content for PDF with vulnerability details (removed activity diagrams)
     const content = `
 CyberXpert Security Report
 ==========================
@@ -78,14 +79,6 @@ Recommended Solution: ${vuln.solution}
 `).join('')}
 ` : ''}
 
-ACTIVITY DIAGRAMS INCLUDED
-==========================
-1. User Authentication Flow - Shows the complete user login and access control process
-2. Security Analysis Process - Illustrates the comprehensive security scanning workflow
-3. Vulnerability Detection Workflow - Details the automated vulnerability discovery process
-4. Report Generation Process - Demonstrates how security reports are created and formatted
-5. Mitigation Implementation Flow - Shows the vulnerability remediation workflow
-
 RECOMMENDATIONS
 ===============
 Based on the analysis results, immediate attention should be given to critical and high-priority vulnerabilities.
@@ -112,6 +105,22 @@ Advanced AI-Powered Security Analysis
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     }, 100);
+
+    // Create a new report entry in the system
+    const downloadReport: ReportItemType = {
+      id: `download-${Date.now()}`,
+      date: new Date().toLocaleDateString(),
+      time: new Date().toLocaleTimeString(),
+      read: false,
+      createdBy: report.createdBy,
+      securityPosture: {
+        ...report.securityPosture,
+        details: `Downloaded report based on ${report.id} - ${report.securityPosture.details}`
+      }
+    };
+    
+    addReport(downloadReport);
+    toast.success("Report downloaded and saved to Reports tab");
   };
   
   return (
@@ -147,7 +156,7 @@ Advanced AI-Powered Security Analysis
             className="hidden sm:flex items-center gap-1"
           >
             <Download size={16} />
-            Enhanced Report
+            Download Report
           </Button>
           
           <div className="hidden sm:block">
@@ -192,7 +201,7 @@ Advanced AI-Powered Security Analysis
                   className="sm:hidden flex items-center gap-1"
                 >
                   <Download size={16} />
-                  Enhanced Report
+                  Download Report
                 </Button>
               </div>
               
@@ -222,11 +231,10 @@ Advanced AI-Powered Security Analysis
                 </p>
               </div>
 
-              {/* Show vulnerability details if available */}
+              {/* Show vulnerability details if available (removed activity diagram references) */}
               {associatedTest?.details.vulnerabilityDetails && (
                 <div className="mt-6">
                   <div className="flex items-center gap-2 mb-3">
-                    <Activity size={16} className="text-blue-600" />
                     <h4 className="text-sm font-medium">Vulnerability Details with TTS Analysis</h4>
                   </div>
                   <div className="space-y-3 max-h-96 overflow-y-auto">

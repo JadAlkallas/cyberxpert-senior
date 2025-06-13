@@ -155,7 +155,26 @@ const generateRandomVulnerabilities = (): VulnerabilityDetail[] => {
   }));
 };
 
-// Mock data for initial states
+// Function to migrate old test data to new format
+const migrateTestData = (tests: any[]): TestHistoryItem[] => {
+  return tests.map(test => {
+    // If test already has new format, return as is
+    if (test.details.vulnerabilityDetails && test.details.vulnerabilityDetails.length > 0 && test.details.vulnerabilityDetails[0].id) {
+      return test;
+    }
+    
+    // Migrate old format to new format
+    return {
+      ...test,
+      details: {
+        ...test.details,
+        vulnerabilityDetails: test.details.vulnerabilities > 0 ? generateRandomVulnerabilities() : []
+      }
+    };
+  });
+};
+
+// Mock data for initial states with proper format
 const mockTestHistory: TestHistoryItem[] = [
   {
     id: "test-1",
@@ -258,7 +277,8 @@ const mockAnalytics: AnalyticsData = {
 export const DataProvider = ({ children }: { children: ReactNode }) => {
   const [testHistory, setTestHistory] = useState<TestHistoryItem[]>(() => {
     const saved = localStorage.getItem("cyberxpert-test-history");
-    return saved ? JSON.parse(saved) : mockTestHistory;
+    const rawData = saved ? JSON.parse(saved) : mockTestHistory;
+    return migrateTestData(rawData);
   });
   
   const [reports, setReports] = useState<ReportItem[]>(() => {
@@ -448,7 +468,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     const test = testHistory.find(t => t.id === testId);
     if (!test) return false;
 
-    // Generate a detailed report
+    // Generate a detailed report and save it to the reports list
     const newReport: ReportItem = {
       id: `report-${Date.now()}`,
       date: new Date().toLocaleDateString(),
