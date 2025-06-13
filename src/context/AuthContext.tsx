@@ -1,3 +1,4 @@
+
 import { createContext, useState, useContext, ReactNode, useEffect } from "react";
 import { toast } from "@/components/ui/sonner";
 import { useNavigate } from "react-router-dom";
@@ -105,25 +106,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Check authentication based on token presence only
   const isAuthenticated = !!localStorage.getItem('access-token');
   
-  // Simplified useEffect - only fetch user data if we have a token but no user data
-  useEffect(() => {
-    const accessToken = localStorage.getItem('access-token');
-    if (accessToken && !user) {
-      // Try to get user profile with existing JWT token (fallback for existing sessions)
-      authApi.getProfile()
-        .then(userData => {
-          const normalizedUser = normalizeUser(userData);
-          setUser(normalizedUser);
-          localStorage.setItem("cyberxpert-user", JSON.stringify(normalizedUser));
-        })
-        .catch(() => {
-          // Token is invalid, clear all tokens
-          localStorage.removeItem('access-token');
-          localStorage.removeItem('refresh-token');
-          localStorage.removeItem('cyberxpert-user');
-        });
-    }
-  }, []);
+  // No useEffect for fetching user data since we don't have that endpoint
 
   // Load all users for admin
   useEffect(() => {
@@ -143,13 +126,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Login function - Only handles tokens, no user data fetch
+  // Login function - Create minimal user object from username and assume admin role for now
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
       setIsLoading(true);
       console.log("AuthContext: Starting login for username:", username);
       
-      // Get tokens from login endpoint (no user data expected)
+      // Get tokens from login endpoint
       const result = await loginApi.execute({ username, password });
       console.log("AuthContext: Login API result:", result);
       
@@ -158,6 +141,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         localStorage.setItem("access-token", result.access);
         localStorage.setItem("refresh-token", result.refresh);
         
+        // Create a minimal user object from the username
+        // Since we don't have a user endpoint, we'll create a basic user object
+        const minimalUser: User = {
+          id: "1", // We'll use a default ID since we don't have this from the backend
+          username: username,
+          email: `${username}@example.com`, // Default email format
+          role: "admin", // Default to admin for now - you can change this logic
+          status: "active",
+          is_active: true,
+          createdAt: new Date().toISOString(),
+        };
+        
+        setUser(minimalUser);
+        localStorage.setItem("cyberxpert-user", JSON.stringify(minimalUser));
+        
+        console.log("AuthContext: User object created:", minimalUser);
         console.log("AuthContext: Tokens stored successfully");
         
         toast.success(`Welcome back, ${username}!`);
@@ -188,6 +187,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Store tokens
         localStorage.setItem("access-token", result.access);
         localStorage.setItem("refresh-token", result.refresh);
+        
+        // Create user object from signup data
+        const newUser: User = {
+          id: "1", // Default ID
+          username: username,
+          email: email,
+          role: role,
+          status: "active",
+          is_active: true,
+          createdAt: new Date().toISOString(),
+        };
+        
+        setUser(newUser);
+        localStorage.setItem("cyberxpert-user", JSON.stringify(newUser));
         
         toast.success("Account created successfully!");
         setIsLoading(false);
