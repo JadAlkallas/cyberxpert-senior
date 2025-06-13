@@ -1,3 +1,4 @@
+
 import { createContext, useState, useContext, ReactNode, useEffect } from "react";
 import { toast } from "@/components/ui/sonner";
 import { useNavigate } from "react-router-dom";
@@ -281,7 +282,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     console.log("Current user:", user);
     console.log("Current user role:", user?.role);
     console.log("Is current user admin?", isUserAdmin(user?.role || ''));
-    console.log("Auth token exists:", !!localStorage.getItem("auth-token"));
+    console.log("Access token exists:", !!localStorage.getItem("access-token"));
     
     if (!user || !isUserAdmin(user.role)) {
       toast.error("Access denied: Admin privileges required");
