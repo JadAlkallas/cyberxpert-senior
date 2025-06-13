@@ -1,4 +1,3 @@
-
 import { createContext, useState, useContext, ReactNode, useEffect } from "react";
 import { toast } from "@/components/ui/sonner";
 import { useNavigate } from "react-router-dom";
@@ -142,7 +141,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Login function - Now fetches user data after storing tokens
+  // Login function - Only handles tokens, no user data fetch
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
       setIsLoading(true);
@@ -158,25 +157,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         localStorage.setItem("refresh-token", result.refresh);
         
         console.log("AuthContext: Tokens stored successfully");
-        
-        // Now fetch user profile data
-        try {
-          const userData = await authApi.getProfile();
-          console.log("AuthContext: User profile fetched:", userData);
-          
-          const normalizedUser = normalizeUser(userData);
-          setUser(normalizedUser);
-          localStorage.setItem("cyberxpert-user", JSON.stringify(normalizedUser));
-          
-          console.log("AuthContext: User data stored:", normalizedUser);
-        } catch (profileError) {
-          console.error("AuthContext: Failed to fetch user profile:", profileError);
-          // If profile fetch fails, clear tokens
-          localStorage.removeItem("access-token");
-          localStorage.removeItem("refresh-token");
-          setIsLoading(false);
-          return false;
-        }
         
         toast.success(`Welcome back, ${username}!`);
         
