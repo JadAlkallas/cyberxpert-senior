@@ -18,10 +18,13 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
-// Updated form schema to match backend validation - removed security_analyst and inactive
+// Updated form schema to use first name and last name instead of username
 const accountSchema = z.object({
-  username: z.string().min(3, {
-    message: "Username must be at least 3 characters"
+  firstName: z.string().min(2, {
+    message: "First name must be at least 2 characters"
+  }),
+  lastName: z.string().min(2, {
+    message: "Last name must be at least 2 characters"
   }),
   email: z.string().email({
     message: "Please enter a valid email address"
@@ -51,7 +54,8 @@ const AdminUsers = () => {
   const form = useForm<AccountFormValues>({
     resolver: zodResolver(accountSchema),
     defaultValues: {
-      username: "",
+      firstName: "",
+      lastName: "",
       email: "",
       password: "",
       confirmPassword: "",
@@ -92,7 +96,9 @@ const AdminUsers = () => {
   
   const onSubmit = async (values: AccountFormValues) => {
     setIsSubmitting(true);
-    const result = await addDevAccount(values.username, values.email, values.password, values.role, values.status);
+    // Create username from first name and last name
+    const username = `${values.firstName.toLowerCase()}.${values.lastName.toLowerCase()}`;
+    const result = await addDevAccount(username, values.email, values.password, values.role, values.status);
     if (result) {
       form.reset();
     }
@@ -226,19 +232,35 @@ const AdminUsers = () => {
                   <CardContent>
                     <Form {...form}>
                       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                        <FormField 
-                          control={form.control} 
-                          name="username" 
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Username</FormLabel>
-                              <FormControl>
-                                <Input placeholder="johndoe" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )} 
-                        />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <FormField 
+                            control={form.control} 
+                            name="firstName" 
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>First Name</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="John" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )} 
+                          />
+                          
+                          <FormField 
+                            control={form.control} 
+                            name="lastName" 
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Last Name</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="Doe" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )} 
+                          />
+                        </div>
                         
                         <FormField control={form.control} name="email" render={({
                         field

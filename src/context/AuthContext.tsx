@@ -307,8 +307,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return false;
     }
     
+    // Split username into first_name and last_name if it contains a dot
+    const [firstName, lastName] = username.includes('.') 
+      ? username.split('.').map(name => name.charAt(0).toUpperCase() + name.slice(1))
+      : [username, 'User']; // fallback if no dot found
+    
     const result = await createUserApi.execute({
-      username,
+      first_name: firstName,
+      last_name: lastName,
       email,
       password,
       password2: password,
