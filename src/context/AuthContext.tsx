@@ -26,7 +26,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   allUsers: User[];
   isLoading: boolean;
-  login: (username: string, password: string) => Promise<boolean>; // Removed role parameter
+  login: (username: string, password: string) => Promise<boolean>;
   signup: (username: string, email: string, password: string, role: UserRole) => Promise<boolean>;
   logout: () => void;
   updateUserProfile: (updates: Partial<User>) => Promise<boolean>;
@@ -107,7 +107,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const accessToken = localStorage.getItem('access-token');
     if (accessToken && !user) {
-      // Try to get user profile with existing JWT token
+      // Try to get user profile with existing JWT token (fallback for existing sessions)
       authApi.getProfile()
         .then(userData => {
           const normalizedUser = normalizeUser(userData);
@@ -141,54 +141,42 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Login function - Django Simple JWT (removed role parameter)
+  // Login function - Now expects user data directly from token endpoint
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
       setIsLoading(true);
       console.log("AuthContext: Starting login for username:", username);
       
-      // Step 1: Get tokens from login endpoint
-      const tokenResult = await loginApi.execute({ username, password });
-      console.log("AuthContext: Token API result:", tokenResult);
+      // Get tokens AND user data from login endpoint
+      const result = await loginApi.execute({ username, password });
+      console.log("AuthContext: Login API result:", result);
       
-      if (tokenResult) {
-        // Step 2: Store tokens immediately
-        localStorage.setItem("access-token", tokenResult.access);
-        localStorage.setItem("refresh-token", tokenResult.refresh);
+      if (result && result.access && result.refresh && result.user) {
+        // Store tokens
+        localStorage.setItem("access-token", result.access);
+        localStorage.setItem("refresh-token", result.refresh);
         
-        console.log("AuthContext: Tokens stored, fetching user profile...");
+        console.log("AuthContext: Tokens stored, processing user data...");
         
-        // Step 3: Fetch user profile using the new access token
-        try {
-          const userData = await authApi.getProfile();
-          console.log("AuthContext: User profile fetched:", userData);
-          
-          const normalizedUser = normalizeUser(userData);
-          console.log("AuthContext: Normalized user:", normalizedUser);
-          
-          setUser(normalizedUser);
-          localStorage.setItem("cyberxpert-user", JSON.stringify(normalizedUser));
-          
-          if (!normalizedUser.is_active) {
-            toast.warning("Your account has been suspended. Contact an administrator for assistance.");
-          } else {
-            toast.success(`Welcome back, ${username}!`);
-          }
-          
-          console.log("AuthContext: Login successful");
-          setIsLoading(false);
-          return true;
-        } catch (profileError) {
-          console.error("AuthContext: Failed to fetch user profile:", profileError);
-          // Clear tokens if profile fetch fails
-          localStorage.removeItem("access-token");
-          localStorage.removeItem("refresh-token");
-          setIsLoading(false);
-          return false;
+        // Process user data that came with the tokens
+        const normalizedUser = normalizeUser(result.user);
+        console.log("AuthContext: Normalized user:", normalizedUser);
+        
+        setUser(normalizedUser);
+        localStorage.setItem("cyberxpert-user", JSON.stringify(normalizedUser));
+        
+        if (!normalizedUser.is_active) {
+          toast.warning("Your account has been suspended. Contact an administrator for assistance.");
+        } else {
+          toast.success(`Welcome back, ${username}!`);
         }
+        
+        console.log("AuthContext: Login successful");
+        setIsLoading(false);
+        return true;
       }
       
-      console.log("AuthContext: Login failed - no token result");
+      console.log("AuthContext: Login failed - incomplete response");
       setIsLoading(false);
       return false;
     } catch (error) {

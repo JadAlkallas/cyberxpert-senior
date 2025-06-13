@@ -10,7 +10,7 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse extends TokenResponse {
-  user: DjangoUser;
+  user: DjangoUser; // User data is now included in the token response
 }
 
 export interface SignupRequest {
@@ -37,9 +37,9 @@ export interface UpdateUserRequest {
   avatar?: string;
 }
 
-// Authentication API service for Django Simple JWT - Updated endpoints to match your backend
+// Authentication API service for Django Simple JWT - Updated to handle user data in token response
 export const authApi = {
-  // User login - Using your /auth/token endpoint (no trailing slash)
+  // User login - Now expects user data in the response from /auth/token
   login: async (data: LoginRequest): Promise<LoginResponse> => {
     return apiRequest<LoginResponse>('/auth/token', {
       method: 'POST',
