@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import Header from "@/components/layout/Header";
 import Sidebar from "@/components/layout/Sidebar";
@@ -75,32 +74,44 @@ const AdminUsers = () => {
   console.log("AdminUsers: Current user:", user);
   console.log("AdminUsers: User role:", user?.role);
   console.log("AdminUsers: Is admin?", isUserAdmin(user?.role || ''));
+  console.log("AdminUsers: All users:", allUsers);
   console.log("AdminUsers: Rendering admin panel");
   
   const handleDelete = async (userId: string) => {
     if (confirm("Are you sure you want to delete this user?")) {
       setProcessingId(userId);
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      deleteDevAccount(userId);
+      await deleteDevAccount(userId);
       setProcessingId(null);
     }
   };
   
   const handleToggleStatus = async (userId: string, currentStatus: string) => {
     setProcessingId(userId);
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
     const newStatus = currentStatus === "active" ? "suspended" : "active";
-    updateDevStatus(userId, newStatus as "active" | "suspended");
+    await updateDevStatus(userId, newStatus as "active" | "suspended");
     setProcessingId(null);
   };
   
   const onSubmit = async (values: AccountFormValues) => {
+    console.log("=== FORM SUBMISSION DEBUG ===");
+    console.log("Form values:", values);
+    
     setIsSubmitting(true);
+    
     // Use provided username or create one from first name and last name
     const username = values.username?.trim() || `${values.firstName.toLowerCase()}.${values.lastName.toLowerCase()}`;
-    const result = await addDevAccount(username, values.email, values.password, values.role, values.status);
+    const firstName = values.firstName.trim();
+    const lastName = values.lastName.trim();
+    
+    console.log("Final values being sent:");
+    console.log("- username:", username);
+    console.log("- firstName:", firstName);
+    console.log("- lastName:", lastName);
+    console.log("- email:", values.email);
+    console.log("- role:", values.role);
+    console.log("- status:", values.status);
+    
+    const result = await addDevAccount(username, firstName, lastName, values.email, values.password, values.role, values.status);
     if (result) {
       form.reset();
     }
@@ -130,13 +141,13 @@ const AdminUsers = () => {
               <TabsContent value="users">
                 <Card>
                   <CardHeader>
-                    <CardTitle>All Accounts</CardTitle>
+                    <CardTitle>All Accounts ({allUsers.length})</CardTitle>
                     <CardDescription>View and manage all user accounts</CardDescription>
                   </CardHeader>
                   <CardContent>
                     {allUsers.length === 0 ? (
                       <div className="text-center py-8 text-gray-500">
-                        No user accounts found
+                        No user accounts found. Create some accounts using the "Add Account" tab.
                       </div>
                     ) : (
                       <Table>
@@ -180,7 +191,7 @@ const AdminUsers = () => {
                                 </span>
                               </TableCell>
                               <TableCell>
-                                {format(new Date(user.createdAt), "MMM d, yyyy")}
+                                {user.createdAt ? format(new Date(user.createdAt), "MMM d, yyyy") : "N/A"}
                               </TableCell>
                               <TableCell className="text-right">
                                 <div className="flex justify-end gap-2">

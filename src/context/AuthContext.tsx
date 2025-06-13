@@ -31,7 +31,7 @@ interface AuthContextType {
   logout: () => void;
   updateUserProfile: (updates: Partial<User>) => Promise<boolean>;
   uploadAvatar: (file: File) => Promise<string | null>;
-  addDevAccount: (username: string, email: string, password: string, role: UserRole, status: UserStatus) => Promise<boolean>;
+  addDevAccount: (username: string, firstName: string, lastName: string, email: string, password: string, role: UserRole, status: UserStatus) => Promise<boolean>;
   deleteDevAccount: (userId: string) => Promise<boolean>;
   updateDevStatus: (userId: string, status: UserStatus) => Promise<boolean>;
   refreshUsers: () => Promise<void>;
@@ -49,18 +49,23 @@ export const useAuth = () => {
 
 // Helper function to normalize Django user data
 const normalizeUser = (djangoUser: any): User => {
-  return {
-    id: djangoUser.id,
-    username: djangoUser.username,
-    email: djangoUser.email,
-    role: djangoUser.role || 'developer',
-    status: djangoUser.is_active ? 'active' : 'suspended',
-    is_active: djangoUser.is_active,
-    avatarUrl: djangoUser.avatar || djangoUser.avatarUrl,
-    avatar: djangoUser.avatar,
-    createdAt: djangoUser.date_joined || djangoUser.createdAt,
+  console.log("Normalizing Django user:", djangoUser);
+  
+  const normalized = {
+    id: djangoUser.id ? String(djangoUser.id) : "unknown",
+    username: djangoUser.username || "unknown",
+    email: djangoUser.email || "",
+    role: (djangoUser.role || 'developer') as UserRole,
+    status: djangoUser.is_active ? 'active' : 'suspended' as UserStatus,
+    is_active: djangoUser.is_active !== false,
+    avatarUrl: djangoUser.avatar || djangoUser.profile_picture || djangoUser.avatarUrl,
+    avatar: djangoUser.avatar || djangoUser.profile_picture,
+    createdAt: djangoUser.date_joined || djangoUser.createdAt || new Date().toISOString(),
     date_joined: djangoUser.date_joined,
   };
+  
+  console.log("Normalized user:", normalized);
+  return normalized;
 };
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -291,6 +296,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   
   const addDevAccount = async (
     username: string, 
+    firstName: string,
+    lastName: string,
     email: string, 
     password: string, 
     role: UserRole,
@@ -301,19 +308,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     console.log("Current user role:", user?.role);
     console.log("Is current user admin?", isUserAdmin(user?.role || ''));
     console.log("Access token exists:", !!localStorage.getItem("access-token"));
+    console.log("Parameters received:");
+    console.log("- username:", username);
+    console.log("- firstName:", firstName);
+    console.log("- lastName:", lastName);
+    console.log("- email:", email);
+    console.log("- role:", role);
+    console.log("- status:", status);
     
     if (!user || !isUserAdmin(user.role)) {
       toast.error("Access denied: Admin privileges required");
       return false;
     }
     
-    // Split username into first_name and last_name if it contains a dot
-    const [firstName, lastName] = username.includes('.') 
-      ? username.split('.').map(name => name.charAt(0).toUpperCase() + name.slice(1))
-      : [username, 'User']; // fallback if no dot found
-    
     const result = await createUserApi.execute({
-      username: username, // Send username as provided
+      username: username,
       first_name: firstName,
       last_name: lastName,
       email,
@@ -324,8 +333,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
     
     if (result) {
+      console.log("User created successfully:", result);
       const normalizedUser = normalizeUser(result);
-      setAllUsers(prev => [...prev, normalizedUser]);
+      console.log("Adding normalized user to list:", normalizedUser);
+      setAllUsers(prev => {
+        const updated = [...prev, normalizedUser];
+        console.log("Updated users list:", updated);
+        return updated;
+      });
       return true;
     }
     
