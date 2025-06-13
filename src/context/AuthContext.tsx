@@ -203,34 +203,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           return true;
         } else {
           console.error("AuthContext: Failed to decode token");
+          toast.error("Login failed. Please try again.");
           setIsLoading(false);
           return false;
         }
       }
       
-      // Handle login failure with better error messages
-      if (loginApi.error) {
-        console.log("AuthContext: Login failed with error:", loginApi.error);
-        
-        // Check if the error indicates a suspended account
-        if (loginApi.error.includes("No active account found with the given credentials")) {
-          toast.error("Your account has been suspended. Please contact an administrator to reactivate your account.");
-        } else if (loginApi.error.includes("Invalid credentials") || loginApi.error.includes("authentication failed")) {
-          toast.error("Login failed. Please check your username and password.");
-        } else {
-          toast.error("Login failed. Please try again or contact support if the problem persists.");
-        }
+      // If we get here, login failed - result is null
+      console.log("AuthContext: Login failed - no result from API");
+      
+      // The error should be available in loginApi.error now
+      const errorMessage = loginApi.error;
+      console.log("AuthContext: Error message from API:", errorMessage);
+      
+      // Handle specific error cases based on the actual Django error message
+      if (errorMessage && errorMessage.includes("No active account found with the given credentials")) {
+        toast.error("Your account has been suspended. Please contact an administrator to reactivate your account.");
+      } else if (errorMessage && (errorMessage.includes("Invalid credentials") || errorMessage.includes("authentication failed"))) {
+        toast.error("Login failed. Please check your username and password.");
       } else {
         toast.error("Login failed. Please check your credentials.");
       }
       
-      console.log("AuthContext: Login failed - incomplete response");
       setIsLoading(false);
       return false;
     } catch (error) {
       console.error("AuthContext: Login error:", error);
       
-      // Handle specific error cases
+      // Handle specific error cases from the catch block
       if (error instanceof Error) {
         if (error.message.includes("No active account found with the given credentials")) {
           toast.error("Your account has been suspended. Please contact an administrator to reactivate your account.");
