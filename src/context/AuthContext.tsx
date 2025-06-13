@@ -313,6 +313,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       : [username, 'User']; // fallback if no dot found
     
     const result = await createUserApi.execute({
+      username: username, // Send username as provided
       first_name: firstName,
       last_name: lastName,
       email,

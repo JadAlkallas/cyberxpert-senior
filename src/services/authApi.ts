@@ -1,3 +1,4 @@
+
 import { apiRequest } from './api';
 import { User, UserRole, UserStatus } from '@/context/AuthContext';
 import { TokenResponse, DjangoUser, PaginatedResponse } from '@/types/api';
@@ -22,6 +23,7 @@ export interface SignupRequest {
 }
 
 export interface CreateUserRequest {
+  username: string; // Added username field
   first_name: string;
   last_name: string;
   email: string;
