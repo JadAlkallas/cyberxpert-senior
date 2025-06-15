@@ -47,28 +47,13 @@ const AdminUsers = () => {
     allUsers,
     addDevAccount,
     deleteDevAccount,
-    updateDevStatus
+    updateDevStatus,
+    refreshUsers
   } = useAuth();
-  const [processingId, setProcessingId] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const form = useForm<AccountFormValues>({
-    resolver: zodResolver(accountSchema),
-    defaultValues: {
-      username: "",
-      firstName: "",
-      lastName: "",
-      email: "",
-      password: "",
-      confirmPassword: "",
-      role: "developer",
-      status: "active"
-    }
-  });
 
-  // Helper function to check if user is admin (handles case sensitivity)
-  const isUserAdmin = (userRole: string) => {
-    return userRole?.toLowerCase() === "admin";
-  };
+  // Detect is_superuser and is_staff directly for rendering logic
+  const isSuperUser = !!user?.is_superuser;
+  const isAdminUser = !!user?.is_staff && !user.is_superuser;
 
   // --- DEBUGGING: log allUsers before display and check role spread ---
   console.log("AdminUsers: allUsers (RAW for table):", allUsers);
@@ -79,62 +64,30 @@ const AdminUsers = () => {
       {} as Record<string, number>
     )
   );
+  console.log("AdminUsers: user:", user);
+
+  // Only show correct user type: superuser only sees admins, admin only sees developers
+  let filteredUsers: typeof allUsers = [];
+  if (isSuperUser) {
+    filteredUsers = allUsers.filter(
+      u => u.role === "admin" || u.is_staff === true || u.__sourceRole === "admin"
+    );
+  } else if (isAdminUser) {
+    filteredUsers = allUsers.filter(
+      u => u.role === "developer" ||
+        u.is_staff === false ||
+        u.is_superuser === false ||
+        u.__sourceRole === "developer"
+    );
+  }
 
   // Sort users newest first by createdAt (if present)
-  const sortedUsers = [...allUsers].sort((a, b) => {
+  const sortedUsers = [...filteredUsers].sort((a, b) => {
     const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
     const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
     return bTime - aTime;
   });
 
-  // Debug logging
-  console.log("AdminUsers: Current user:", user);
-  console.log("AdminUsers: User role:", user?.role);
-  console.log("AdminUsers: Is admin?", isUserAdmin(user?.role || ''));
-  console.log("AdminUsers: All users:", allUsers);
-  console.log("AdminUsers: Rendering admin panel");
-  
-  const handleDelete = async (userId: string) => {
-    if (confirm("Are you sure you want to delete this user?")) {
-      setProcessingId(userId);
-      await deleteDevAccount(userId);
-      setProcessingId(null);
-    }
-  };
-  
-  const handleToggleStatus = async (userId: string, currentStatus: string) => {
-    setProcessingId(userId);
-    const newStatus = currentStatus === "active" ? "suspended" : "active";
-    await updateDevStatus(userId, newStatus as "active" | "suspended");
-    setProcessingId(null);
-  };
-  
-  const onSubmit = async (values: AccountFormValues) => {
-    console.log("=== FORM SUBMISSION DEBUG ===");
-    console.log("Form values:", values);
-    
-    setIsSubmitting(true);
-    
-    // Use provided username or create one from first name and last name
-    const username = values.username?.trim() || `${values.firstName.toLowerCase()}.${values.lastName.toLowerCase()}`;
-    const firstName = values.firstName.trim();
-    const lastName = values.lastName.trim();
-    
-    console.log("Final values being sent:");
-    console.log("- username:", username);
-    console.log("- firstName:", firstName);
-    console.log("- lastName:", lastName);
-    console.log("- email:", values.email);
-    console.log("- role:", values.role);
-    console.log("- status:", values.status);
-    
-    const result = await addDevAccount(username, firstName, lastName, values.email, values.password, values.role, values.status);
-    if (result) {
-      form.reset();
-    }
-    setIsSubmitting(false);
-  };
-  
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -158,8 +111,26 @@ const AdminUsers = () => {
               <TabsContent value="users">
                 <Card>
                   <CardHeader>
-                    <CardTitle>All Accounts ({allUsers.length})</CardTitle>
-                    <CardDescription>View and manage all user accounts</CardDescription>
+                    <CardTitle>
+                      {isSuperUser &&
+                        <>Administrator Accounts ({sortedUsers.length})</>
+                      }
+                      {isAdminUser &&
+                        <>Developer Accounts ({sortedUsers.length})</>
+                      }
+                      {!isSuperUser && !isAdminUser && <>Accounts ({sortedUsers.length})</>}
+                    </CardTitle>
+                    <CardDescription>
+                      {isSuperUser &&
+                        <>View and manage all admin user accounts</>
+                      }
+                      {isAdminUser &&
+                        <>View and manage all developer user accounts</>
+                      }
+                      {!isSuperUser && !isAdminUser &&
+                        <>View and manage user accounts</>
+                      }
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     {sortedUsers.length === 0 ? (

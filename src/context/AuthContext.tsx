@@ -20,6 +20,9 @@ export interface User {
   avatar?: string; // Django field name
   createdAt: string;
   date_joined?: string; // Django field name
+  // ADDED
+  is_staff?: boolean;
+  is_superuser?: boolean;
 }
 
 interface AuthContextType {
@@ -177,6 +180,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Check authentication based on token presence only
   const isAuthenticated = !!localStorage.getItem('access-token');
   
+  const isSuperUser = (userObj: User | null) => !!userObj?.is_superuser;
+  const isAdminUser = (userObj: User | null) => !!userObj?.is_staff && !userObj.is_superuser;
+
   // Helper function to refresh current user state
   const refreshCurrentUser = () => {
     console.log("Refreshing current user state");
@@ -188,6 +194,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           ...user,
           role: tokenData.is_staff ? "admin" : "developer",
           status: user.is_active ? "active" : "suspended",
+          is_staff: !!tokenData.is_staff,
+          is_superuser: !!tokenData.is_superuser,
         };
         console.log("Refreshed user:", refreshedUser);
         setUser(refreshedUser);
@@ -220,12 +228,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
     
     console.log("refreshUsers: Fetching users from API");
-    const users = await getAllUsersApi.execute();
-    console.log("refreshUsers: API RAW response:", users);
-    
+    let users: any[] | null = [];
+    if (isSuperUser(user)) {
+      // Only fetch admins (not developers)
+      users = await getAllUsersApi.execute();
+      // Only keep the ones where sourceRole/admin detection = "admin"
+      if (users) {
+        users = (users as any[]).filter(u =>
+          (u.__sourceRole === "admin") ||
+          (typeof u.is_staff === "boolean" && u.is_staff)
+        );
+      }
+    } else if (isAdminUser(user)) {
+      // Only fetch developers (not admins)
+      users = await getAllUsersApi.execute();
+      // Only keep the ones where sourceRole/admin detection = "developer"
+      if (users) {
+        users = (users as any[]).filter(u =>
+          (u.__sourceRole === "developer") ||
+          !(u.is_staff || u.is_superuser)
+        );
+      }
+    }
     if (users) {
       const normalizedUsers = users.map(normalizeUser);
-      console.log("refreshUsers: NORMALIZED users:", normalizedUsers);
       setAllUsers(normalizedUsers);
     }
   };
@@ -259,6 +285,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             status: "active", // Default to active on login
             is_active: true,
             createdAt: new Date().toISOString(),
+            is_staff: !!tokenData.is_staff,
+            is_superuser: !!tokenData.is_superuser,
           };
           
           console.log("AuthContext: User object created from token:", userFromToken);
