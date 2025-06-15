@@ -17,7 +17,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
-// Updated form schema to include username as optional field
+// Updated form schema to remove status field from form input
 const accountSchema = z.object({
   username: z.string().optional(),
   firstName: z.string().min(2, {
@@ -34,7 +34,7 @@ const accountSchema = z.object({
   }),
   confirmPassword: z.string(),
   role: z.enum(["developer", "admin"]),
-  status: z.enum(["active", "suspended"])
+  // REMOVED: status
 }).refine(data => data.password === data.confirmPassword, {
   message: "Passwords do not match",
   path: ["confirmPassword"]
@@ -53,8 +53,8 @@ const defaultFormValues: AccountFormValues = {
   email: "",
   password: "",
   confirmPassword: "",
-  role: "developer",
-  status: "active"
+  role: "developer"
+  // REMOVED: status
 };
 
 const AdminUsers = () => {
@@ -136,9 +136,11 @@ const AdminUsers = () => {
   const isSubmitting = formState.isSubmitting;
 
   const onSubmit = async (values: AccountFormValues) => {
-    let username = values.username && values.username.trim() !== ""
-      ? values.username.trim()
-      : `${values.firstName.toLowerCase()}.${values.lastName.toLowerCase()}`.replace(/\s+/g, "");
+    let username =
+      values.username && values.username.trim() !== ""
+        ? values.username.trim()
+        : `${values.firstName.toLowerCase()}.${values.lastName.toLowerCase()}`.replace(/\s+/g, "");
+    // Always send "active" as the status since backend ignores it and it's required by addDevAccount param signature
     const success = await addDevAccount(
       username,
       values.firstName,
@@ -146,7 +148,7 @@ const AdminUsers = () => {
       values.email,
       values.password,
       values.role,
-      values.status
+      "active" // Send active; backend will ignore
     );
     if (success) {
       form.reset(defaultFormValues);
@@ -174,7 +176,7 @@ const AdminUsers = () => {
                 <TabsTrigger value="add">Add Account</TabsTrigger>
               </TabsList>
               
-              {/* Developers Table */}
+              
               <TabsContent value="developers">
                 <Card>
                   <CardHeader>
@@ -273,7 +275,7 @@ const AdminUsers = () => {
                 </Card>
               </TabsContent>
 
-              {/* Admins Table — only visible to superusers */}
+              
               {isSuperUser && (
                 <TabsContent value="admins">
                   <Card>
@@ -481,33 +483,7 @@ const AdminUsers = () => {
                               </FormControl>
                               <FormMessage />
                             </FormItem>} />
-                        <FormField control={form.control} name="status" render={({
-                          field
-                        }) => <FormItem>
-                              <FormLabel>Status</FormLabel>
-                              <FormControl>
-                                <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex space-x-4">
-                                  <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="active" id="status-active" />
-                                    <Label htmlFor="status-active" className="flex items-center">
-                                      <UserCheck className="h-4 w-4 mr-2" />
-                                      Active
-                                    </Label>
-                                  </div>
-                                  <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="suspended" id="status-suspended" />
-                                    <Label htmlFor="status-suspended" className="flex items-center">
-                                      <UserX className="h-4 w-4 mr-2" />
-                                      Suspended
-                                    </Label>
-                                  </div>
-                                </RadioGroup>
-                              </FormControl>
-                              <FormDescription>
-                                Suspended users can log in but cannot perform testing actions
-                              </FormDescription>
-                              <FormMessage />
-                            </FormItem>} />
+                        
                         <Button type="submit" disabled={isSubmitting} className="flex items-center gap-2">
                           {isSubmitting ? <>
                             <LoadingSpinner size="sm" />
