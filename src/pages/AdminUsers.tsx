@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import Header from "@/components/layout/Header";
 import Sidebar from "@/components/layout/Sidebar";
@@ -41,6 +42,23 @@ const accountSchema = z.object({
 });
 type AccountFormValues = z.infer<typeof accountSchema>;
 
+// ---------- Extra type for local __sourceRole handling ONLY ----------
+type UserWithSource = ReturnType<typeof useAuth>["allUsers"][number] & {
+  __sourceRole?: string;
+};
+
+// --- Add Account form setup ---
+const defaultFormValues: AccountFormValues = {
+  username: "",
+  firstName: "",
+  lastName: "",
+  email: "",
+  password: "",
+  confirmPassword: "",
+  role: "developer",
+  status: "active"
+};
+
 const AdminUsers = () => {
   const {
     user,
@@ -60,25 +78,30 @@ const AdminUsers = () => {
   console.log(
     "AdminUsers: role count:",
     allUsers.reduce(
-      (acc, u) => ({ ...acc, [u.role]: (acc[u.role] || 0) + 1 }),
+      (acc, u) => ({ ...acc, [(u as any).role]: (acc[(u as any).role] || 0) + 1 }),
       {} as Record<string, number>
     )
   );
   console.log("AdminUsers: user:", user);
 
   // Only show correct user type: superuser only sees admins, admin only sees developers
-  let filteredUsers: typeof allUsers = [];
+  let filteredUsers: UserWithSource[] = [];
   if (isSuperUser) {
-    filteredUsers = allUsers.filter(
-      u => u.role === "admin" || u.is_staff === true || u.__sourceRole === "admin"
-    );
+    filteredUsers = allUsers
+      .filter(
+        (u) =>
+          (u as any).__sourceRole === "admin" ||
+          u.role === "admin" ||
+          u.is_staff === true
+      ) as UserWithSource[];
   } else if (isAdminUser) {
-    filteredUsers = allUsers.filter(
-      u => u.role === "developer" ||
-        u.is_staff === false ||
-        u.is_superuser === false ||
-        u.__sourceRole === "developer"
-    );
+    filteredUsers = allUsers
+      .filter(
+        (u) =>
+          (u as any).__sourceRole === "developer" ||
+          u.role === "developer" ||
+          u.is_staff === false
+      ) as UserWithSource[];
   }
 
   // Sort users newest first by createdAt (if present)
@@ -87,6 +110,52 @@ const AdminUsers = () => {
     const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
     return bTime - aTime;
   });
+
+  // --- Action button logic ---
+  const [processingId, setProcessingId] = useState<string | null>(null);
+
+  const handleToggleStatus = async (userId: string, currentStatus: string) => {
+    setProcessingId(userId);
+    const nextStatus = currentStatus === "active" ? "suspended" : "active";
+    await updateDevStatus(userId, nextStatus as "active" | "suspended");
+    setProcessingId(null);
+  };
+
+  const handleDelete = async (userId: string) => {
+    setProcessingId(userId);
+    await deleteDevAccount(userId);
+    setProcessingId(null);
+  };
+
+  // --- Add Account form logic ---
+  const form = useForm<AccountFormValues>({
+    resolver: zodResolver(accountSchema),
+    defaultValues: defaultFormValues
+  });
+  const { handleSubmit, formState } = form;
+  const isSubmitting = formState.isSubmitting;
+
+  const onSubmit = async (values: AccountFormValues) => {
+    // If username is blank, generate it
+    let username = values.username && values.username.trim() !== "" 
+      ? values.username.trim()
+      : `${values.firstName.toLowerCase()}.${values.lastName.toLowerCase()}`.replace(/\s+/g, "");
+    const success = await addDevAccount(
+      username,
+      values.firstName,
+      values.lastName,
+      values.email,
+      values.password,
+      values.role,
+      values.status
+    );
+    if (success) {
+      // Reset the form fields
+      form.reset(defaultFormValues);
+      // Refresh users list
+      await refreshUsers();
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -232,7 +301,7 @@ const AdminUsers = () => {
                   </CardHeader>
                   <CardContent>
                     <Form {...form}>
-                      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                         <FormField 
                           control={form.control} 
                           name="username" 
