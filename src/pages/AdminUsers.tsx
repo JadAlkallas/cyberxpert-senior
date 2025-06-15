@@ -132,9 +132,20 @@ const AdminUsers = () => {
     resolver: zodResolver(accountSchema),
     defaultValues: defaultFormValues
   });
-  const { handleSubmit, formState } = form;
+  const { handleSubmit, formState, setValue } = form;
   const isSubmitting = formState.isSubmitting;
 
+  // ----- Force role to developer for non-superusers -----
+  // Set to "developer" when user changes to admin (prevents devs from "backdoor" admin creation)
+  // This runs on initial mount and if isSuperUser/isAdminUser changes
+  // Also: disables field if not superuser for full safety
+  import { useEffect } from "react";
+  useEffect(() => {
+    if (isAdminUser && form.getValues("role") !== "developer") {
+      setValue("role", "developer");
+    }
+  }, [isAdminUser, setValue]);
+  
   const onSubmit = async (values: AccountFormValues) => {
     let username =
       values.username && values.username.trim() !== ""
@@ -464,24 +475,43 @@ const AdminUsers = () => {
                         }) => <FormItem>
                               <FormLabel>Role</FormLabel>
                               <FormControl>
-                                <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex space-x-4">
+                                <RadioGroup
+                                  onValueChange={value => {
+                                    // Prevent setting to admin if not allowed
+                                    if (!isSuperUser && value === "admin") return;
+                                    field.onChange(value);
+                                  }}
+                                  defaultValue={field.value}
+                                  className="flex space-x-4"
+                                  value={field.value}
+                                >
                                   <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="developer" id="role-developer" />
+                                    <RadioGroupItem value="developer" id="role-developer" disabled={false} />
                                     <Label htmlFor="role-developer" className="flex items-center">
                                       <User className="h-4 w-4 mr-2" />
                                       Developer
                                     </Label>
                                   </div>
-                                  <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="admin" id="role-admin" />
-                                    <Label htmlFor="role-admin" className="flex items-center">
-                                      <Shield className="h-4 w-4 mr-2" />
-                                      Administrator
-                                    </Label>
-                                  </div>
+                                  {/* ONLY SHOW ADMIN OPTION TO SUPERUSERS */}
+                                  {isSuperUser && (
+                                    <div className="flex items-center space-x-2">
+                                      <RadioGroupItem value="admin" id="role-admin" disabled={false} />
+                                      <Label htmlFor="role-admin" className="flex items-center">
+                                        <Shield className="h-4 w-4 mr-2" />
+                                        Administrator
+                                      </Label>
+                                    </div>
+                                  )}
+                                  {/* If not superuser, no admin role option rendered */}
                                 </RadioGroup>
                               </FormControl>
                               <FormMessage />
+                              {/* Optionally, let the user know why they can't add admins */}
+                              {!isSuperUser && (
+                                <div className="text-xs text-muted-foreground mt-1">
+                                  Only superusers can create admin accounts.
+                                </div>
+                              )}
                             </FormItem>} />
                         
                         <Button type="submit" disabled={isSubmitting} className="flex items-center gap-2">
