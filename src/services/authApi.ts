@@ -1,4 +1,3 @@
-
 import { apiRequest } from './api';
 import { User, UserRole, UserStatus } from '@/context/AuthContext';
 import { TokenResponse, DjangoUser, PaginatedResponse } from '@/types/api';
@@ -97,18 +96,22 @@ export const authApi = {
     });
   },
 
-  // Upload avatar (keeping original endpoint as it's not shown in your image)
+  // Upload avatar - Using profile update endpoint with FormData
   uploadAvatar: async (file: File): Promise<string> => {
     const formData = new FormData();
     formData.append('avatar', file);
     
-    return apiRequest<{ avatar_url: string }>('/auth/upload-avatar/', {
-      method: 'POST',
+    // Use the profile update endpoint for avatar upload
+    const response = await apiRequest<DjangoUser>('/developer/profile/update', {
+      method: 'PATCH',
       body: formData,
       headers: {
         // Don't set Content-Type - let browser set it for FormData
       } as Record<string, string>,
-    }).then(response => response.avatar_url);
+    });
+    
+    // Return the avatar URL from the response
+    return response.avatar || response.profile_picture || '';
   },
 
   // Admin: Get all users - combining developers and admins
