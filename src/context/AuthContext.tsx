@@ -49,15 +49,35 @@ export const useAuth = () => {
   return context;
 };
 
-// Helper function to normalize Django user data
+// Helper function to normalize Django user data - Fixed role detection
 const normalizeUser = (djangoUser: any): User => {
   console.log("Normalizing Django user:", djangoUser);
+  
+  // Better role detection - check multiple possible fields
+  let userRole: UserRole = 'developer'; // Default
+  
+  if (djangoUser.role) {
+    // Direct role field from Django
+    userRole = djangoUser.role.toLowerCase() === 'admin' ? 'admin' : 'developer';
+  } else if (djangoUser.is_staff !== undefined) {
+    // Check is_staff field
+    userRole = djangoUser.is_staff ? 'admin' : 'developer';
+  } else if (djangoUser.is_superuser) {
+    // Check is_superuser field
+    userRole = 'admin';
+  }
+  
+  console.log("Detected role:", userRole, "from djangoUser:", {
+    role: djangoUser.role,
+    is_staff: djangoUser.is_staff,
+    is_superuser: djangoUser.is_superuser
+  });
   
   const normalized = {
     id: djangoUser.id ? String(djangoUser.id) : "unknown",
     username: djangoUser.username || "unknown",
     email: djangoUser.email || "",
-    role: (djangoUser.role || 'developer') as UserRole,
+    role: userRole,
     status: djangoUser.is_active ? 'active' : 'suspended' as UserStatus,
     is_active: djangoUser.is_active !== false,
     avatarUrl: djangoUser.avatar || djangoUser.profile_picture || djangoUser.avatarUrl,
@@ -139,20 +159,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Load all users for admin
+  // Load all users for admin - Fixed to refresh properly
   useEffect(() => {
-    if (user?.role === 'admin') {
+    console.log("useEffect: user changed:", user);
+    console.log("useEffect: user role:", user?.role);
+    console.log("useEffect: is admin?", isUserAdmin(user?.role || ''));
+    
+    if (user && isUserAdmin(user.role)) {
+      console.log("useEffect: Refreshing users for admin");
       refreshUsers();
     }
   }, [user]);
 
-  // Refresh users list (admin only)
+  // Refresh users list (admin only) - Enhanced logging
   const refreshUsers = async (): Promise<void> => {
-    if (!isUserAdmin(user?.role || '')) return;
+    console.log("refreshUsers: Starting refresh");
+    console.log("refreshUsers: Current user:", user);
+    console.log("refreshUsers: Is admin?", isUserAdmin(user?.role || ''));
     
+    if (!isUserAdmin(user?.role || '')) {
+      console.log("refreshUsers: Not admin, skipping");
+      return;
+    }
+    
+    console.log("refreshUsers: Fetching users from API");
     const users = await getAllUsersApi.execute();
+    console.log("refreshUsers: API response:", users);
+    
     if (users) {
       const normalizedUsers = users.map(normalizeUser);
+      console.log("refreshUsers: Normalized users:", normalizedUsers);
       setAllUsers(normalizedUsers);
     }
   };
