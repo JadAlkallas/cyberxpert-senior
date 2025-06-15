@@ -49,13 +49,13 @@ export const useAuth = () => {
   return context;
 };
 
-// Helper function to normalize Django user data - robust detection with __sourceRole override
+// Helper function to normalize Django user data – robust detection and **resilient avatar/id handling**
 const normalizeUser = (djangoUser: any): User => {
   console.log("Normalizing Django user:", djangoUser);
 
   let userRole: UserRole = 'developer'; // Default to developer
 
-  // Prefer __sourceRole if present (as patched by authApi)
+  // Role: Prefer __sourceRole, then explicit 'role', then is_staff/is_superuser
   if (djangoUser.__sourceRole === "admin" || djangoUser.__sourceRole === "developer") {
     userRole = djangoUser.__sourceRole;
   } else if (
@@ -69,28 +69,62 @@ const normalizeUser = (djangoUser: any): User => {
     userRole = 'admin';
   }
 
-  // Debug print
-  console.log("Detected role for user:", {
-    username: djangoUser.username,
-    __sourceRole: djangoUser.__sourceRole,
-    role: djangoUser.role,
-    is_staff: djangoUser.is_staff,
-    is_superuser: djangoUser.is_superuser,
-    userRole
-  });
+  // ID: Must be a string. Fallback to unique placeholder.
+  let normalizedId = "unknown";
+  if (djangoUser.id !== undefined && djangoUser.id !== null) {
+    normalizedId = String(djangoUser.id);
+  } else if (djangoUser.pk !== undefined && djangoUser.pk !== null) {
+    normalizedId = String(djangoUser.pk);
+  } else {
+    // fallback for APIs missing id, but should log for visibility
+    console.warn("normalizeUser: Missing user ID in user object!", djangoUser);
+    normalizedId = `user-${Math.random().toString(36).substr(2, 8)}`;
+  }
 
-  return {
-    id: djangoUser.id ? String(djangoUser.id) : "unknown",
-    username: djangoUser.username || "unknown",
+  // Username: Must be string, fallback to id if missing
+  let normalizedUsername = "unknown";
+  if (djangoUser.username) {
+    normalizedUsername = djangoUser.username;
+  } else if (djangoUser.email) {
+    normalizedUsername = djangoUser.email.split("@")[0];
+  } else if (normalizedId && normalizedId !== "unknown") {
+    normalizedUsername = `user_${normalizedId}`;
+  } else {
+    console.warn("normalizeUser: Missing username, using 'unknown'", djangoUser);
+    normalizedUsername = "unknown";
+  }
+
+  // Avatar: Check avatar, avatarUrl, profile_picture fields
+  let avatarUrl = "";
+  if (djangoUser.avatar) {
+    avatarUrl = djangoUser.avatar;
+  } else if (djangoUser.avatarUrl) {
+    avatarUrl = djangoUser.avatarUrl;
+  } else if (djangoUser.profile_picture) {
+    avatarUrl = djangoUser.profile_picture;
+  }
+
+  // Creation date: accept date_joined, createdAt, fallback to now
+  let created = djangoUser.date_joined || djangoUser.createdAt || new Date().toISOString();
+
+  // Compose and return normalized user
+  const normalized: User = {
+    id: normalizedId,
+    username: normalizedUsername,
     email: djangoUser.email || "",
     role: userRole,
     status: djangoUser.is_active ? 'active' : 'suspended',
     is_active: djangoUser.is_active !== false,
-    avatarUrl: djangoUser.avatar || djangoUser.avatarUrl,
-    avatar: djangoUser.avatar,
-    createdAt: djangoUser.date_joined || djangoUser.createdAt || new Date().toISOString(),
+    avatarUrl: avatarUrl,
+    avatar: avatarUrl,
+    createdAt: created,
     date_joined: djangoUser.date_joined,
   };
+
+  // Robust debug output
+  console.log("normalizeUser: returned object:", normalized);
+
+  return normalized;
 };
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -174,7 +208,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [user]);
 
-  // Refresh users list (admin only) - Enhanced logging
+  // Refresh users list (admin only) – Enhanced logging and **print normalized/RAW**
   const refreshUsers = async (): Promise<void> => {
     console.log("refreshUsers: Starting refresh");
     console.log("refreshUsers: Current user:", user);
@@ -187,11 +221,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     console.log("refreshUsers: Fetching users from API");
     const users = await getAllUsersApi.execute();
-    console.log("refreshUsers: API response:", users);
+    console.log("refreshUsers: API RAW response:", users);
     
     if (users) {
       const normalizedUsers = users.map(normalizeUser);
-      console.log("refreshUsers: Normalized users:", normalizedUsers);
+      console.log("refreshUsers: NORMALIZED users:", normalizedUsers);
       setAllUsers(normalizedUsers);
     }
   };
