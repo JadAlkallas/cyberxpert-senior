@@ -47,7 +47,6 @@ type UserWithSource = ReturnType<typeof useAuth>["allUsers"][number] & {
   __sourceRole?: string;
 };
 
-// --- Add Account form setup ---
 const defaultFormValues: AccountFormValues = {
   username: "",
   firstName: "",
@@ -73,39 +72,28 @@ const AdminUsers = () => {
   const isSuperUser = !!user?.is_superuser;
   const isAdminUser = !!user?.is_staff && !user.is_superuser;
 
-  // --- DEBUGGING: log allUsers before display and check role spread ---
-  console.log("AdminUsers: allUsers (RAW for table):", allUsers);
-  console.log(
-    "AdminUsers: role count:",
-    allUsers.reduce(
-      (acc, u) => ({ ...acc, [(u as any).role]: (acc[(u as any).role] || 0) + 1 }),
-      {} as Record<string, number>
-    )
-  );
-  console.log("AdminUsers: user:", user);
+  // Separate users by role using __sourceRole or fallback to role/is_staff
+  const developerUsers: UserWithSource[] = allUsers.filter(
+    (u) =>
+      (u as any).__sourceRole === "developer" ||
+      u.role === "developer" ||
+      u.is_staff === false
+  ) as UserWithSource[];
 
-  // Only show correct user type: superuser only sees admins, admin only sees developers
-  let filteredUsers: UserWithSource[] = [];
-  if (isSuperUser) {
-    filteredUsers = allUsers
-      .filter(
-        (u) =>
-          (u as any).__sourceRole === "admin" ||
-          u.role === "admin" ||
-          u.is_staff === true
-      ) as UserWithSource[];
-  } else if (isAdminUser) {
-    filteredUsers = allUsers
-      .filter(
-        (u) =>
-          (u as any).__sourceRole === "developer" ||
-          u.role === "developer" ||
-          u.is_staff === false
-      ) as UserWithSource[];
-  }
+  const adminUsers: UserWithSource[] = allUsers.filter(
+    (u) =>
+      (u as any).__sourceRole === "admin" ||
+      u.role === "admin" ||
+      u.is_staff === true
+  ) as UserWithSource[];
 
-  // Sort users newest first by createdAt (if present)
-  const sortedUsers = [...filteredUsers].sort((a, b) => {
+  // Sort each by createdAt (newest first)
+  const sortedDevelopers = [...developerUsers].sort((a, b) => {
+    const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return bTime - aTime;
+  });
+  const sortedAdmins = [...adminUsers].sort((a, b) => {
     const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
     const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
     return bTime - aTime;
@@ -136,8 +124,7 @@ const AdminUsers = () => {
   const isSubmitting = formState.isSubmitting;
 
   const onSubmit = async (values: AccountFormValues) => {
-    // If username is blank, generate it
-    let username = values.username && values.username.trim() !== "" 
+    let username = values.username && values.username.trim() !== ""
       ? values.username.trim()
       : `${values.firstName.toLowerCase()}.${values.lastName.toLowerCase()}`.replace(/\s+/g, "");
     const success = await addDevAccount(
@@ -150,9 +137,7 @@ const AdminUsers = () => {
       values.status
     );
     if (success) {
-      // Reset the form fields
       form.reset(defaultFormValues);
-      // Refresh users list
       await refreshUsers();
     }
   };
@@ -160,51 +145,38 @@ const AdminUsers = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-      
       <div className="flex-1 flex">
         <Sidebar />
-        
         <main className="flex-1 bg-gray-50 p-6">
           <div className="container mx-auto">
             <div className="mb-8">
               <h1 className="text-3xl font-bold mb-2">User Management</h1>
               <p className="text-gray-600">Manage all user accounts and permissions</p>
             </div>
-            
-            <Tabs defaultValue="users" className="mb-8">
+            <Tabs defaultValue="developers" className="mb-8">
               <TabsList className="mb-4">
-                <TabsTrigger value="users">All Accounts</TabsTrigger>
+                <TabsTrigger value="developers">Developers</TabsTrigger>
+                {isSuperUser && (
+                  <TabsTrigger value="admins">Admins</TabsTrigger>
+                )}
                 <TabsTrigger value="add">Add Account</TabsTrigger>
               </TabsList>
               
-              <TabsContent value="users">
+              {/* Developers Table */}
+              <TabsContent value="developers">
                 <Card>
                   <CardHeader>
                     <CardTitle>
-                      {isSuperUser &&
-                        <>Administrator Accounts ({sortedUsers.length})</>
-                      }
-                      {isAdminUser &&
-                        <>Developer Accounts ({sortedUsers.length})</>
-                      }
-                      {!isSuperUser && !isAdminUser && <>Accounts ({sortedUsers.length})</>}
+                      Developer Accounts ({sortedDevelopers.length})
                     </CardTitle>
                     <CardDescription>
-                      {isSuperUser &&
-                        <>View and manage all admin user accounts</>
-                      }
-                      {isAdminUser &&
-                        <>View and manage all developer user accounts</>
-                      }
-                      {!isSuperUser && !isAdminUser &&
-                        <>View and manage user accounts</>
-                      }
+                      View and manage all developer user accounts
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {sortedUsers.length === 0 ? (
+                    {sortedDevelopers.length === 0 ? (
                       <div className="text-center py-8 text-gray-500">
-                        No user accounts found. Create some accounts using the "Add Account" tab.
+                        No developer accounts found.
                       </div>
                     ) : (
                       <Table>
@@ -219,24 +191,20 @@ const AdminUsers = () => {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {sortedUsers.map(user => (
+                          {sortedDevelopers.map(user => (
                             <TableRow key={user.id}>
                               <TableCell className="font-medium">{user.username}</TableCell>
                               <TableCell>{user.email}</TableCell>
                               <TableCell>
                                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                  {user.role === "developer" ? (
-                                    <User className="h-3.5 w-3.5 mr-1" />
-                                  ) : (
-                                    <Shield className="h-3.5 w-3.5 mr-1" />
-                                  )}
-                                  {user.role}
+                                  <User className="h-3.5 w-3.5 mr-1" />
+                                  developer
                                 </span>
                               </TableCell>
                               <TableCell>
                                 <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                  user.status === "active" 
-                                    ? "bg-green-100 text-green-800" 
+                                  user.status === "active"
+                                    ? "bg-green-100 text-green-800"
                                     : "bg-red-100 text-red-800"
                                 }`}>
                                   {user.status === "active" ? (
@@ -252,11 +220,11 @@ const AdminUsers = () => {
                               </TableCell>
                               <TableCell className="text-right">
                                 <div className="flex justify-end gap-2">
-                                  <Button 
-                                    size="sm" 
-                                    variant={user.status === "active" ? "destructive" : "outline"} 
-                                    className="h-8" 
-                                    onClick={() => handleToggleStatus(user.id, user.status)} 
+                                  <Button
+                                    size="sm"
+                                    variant={user.status === "active" ? "destructive" : "outline"}
+                                    className="h-8"
+                                    onClick={() => handleToggleStatus(user.id, user.status)}
                                     disabled={processingId === user.id}
                                   >
                                     {processingId === user.id ? (
@@ -268,11 +236,11 @@ const AdminUsers = () => {
                                     )}
                                     {user.status === "active" ? "Suspend" : "Activate"}
                                   </Button>
-                                  <Button 
-                                    size="sm" 
-                                    variant="destructive" 
-                                    className="h-8" 
-                                    onClick={() => handleDelete(user.id)} 
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    className="h-8"
+                                    onClick={() => handleDelete(user.id)}
                                     disabled={processingId === user.id}
                                   >
                                     {processingId === user.id ? (
@@ -292,7 +260,109 @@ const AdminUsers = () => {
                   </CardContent>
                 </Card>
               </TabsContent>
-              
+
+              {/* Admins Table — only visible to superusers */}
+              {isSuperUser && (
+                <TabsContent value="admins">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>
+                        Administrator Accounts ({sortedAdmins.length})
+                      </CardTitle>
+                      <CardDescription>
+                        View and manage all admin user accounts
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {sortedAdmins.length === 0 ? (
+                        <div className="text-center py-8 text-gray-500">
+                          No admin accounts found.
+                        </div>
+                      ) : (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Username</TableHead>
+                              <TableHead>Email</TableHead>
+                              <TableHead>Role</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead>Created</TableHead>
+                              <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {sortedAdmins.map(user => (
+                              <TableRow key={user.id}>
+                                <TableCell className="font-medium">{user.username}</TableCell>
+                                <TableCell>{user.email}</TableCell>
+                                <TableCell>
+                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                    <Shield className="h-3.5 w-3.5 mr-1" />
+                                    admin
+                                  </span>
+                                </TableCell>
+                                <TableCell>
+                                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                    user.status === "active"
+                                      ? "bg-green-100 text-green-800"
+                                      : "bg-red-100 text-red-800"
+                                  }`}>
+                                    {user.status === "active" ? (
+                                      <UserCheck className="h-3.5 w-3.5 mr-1" />
+                                    ) : (
+                                      <UserX className="h-3.5 w-3.5 mr-1" />
+                                    )}
+                                    {user.status === "active" ? "Active" : "Suspended"}
+                                  </span>
+                                </TableCell>
+                                <TableCell>
+                                  {user.createdAt ? format(new Date(user.createdAt), "MMM d, yyyy") : "N/A"}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <div className="flex justify-end gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant={user.status === "active" ? "destructive" : "outline"}
+                                      className="h-8"
+                                      onClick={() => handleToggleStatus(user.id, user.status)}
+                                      disabled={processingId === user.id}
+                                    >
+                                      {processingId === user.id ? (
+                                        <LoadingSpinner size="sm" className="mr-1" />
+                                      ) : user.status === "active" ? (
+                                        <UserX className="h-4 w-4 mr-1" />
+                                      ) : (
+                                        <UserCheck className="h-4 w-4 mr-1" />
+                                      )}
+                                      {user.status === "active" ? "Suspend" : "Activate"}
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="destructive"
+                                      className="h-8"
+                                      onClick={() => handleDelete(user.id)}
+                                      disabled={processingId === user.id}
+                                    >
+                                      {processingId === user.id ? (
+                                        <LoadingSpinner size="sm" className="mr-1" />
+                                      ) : (
+                                        <UserX className="h-4 w-4 mr-1" />
+                                      )}
+                                      Delete
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              )}
+
+              {/* Add Account Form */}
               <TabsContent value="add">
                 <Card>
                   <CardHeader>
@@ -302,9 +372,9 @@ const AdminUsers = () => {
                   <CardContent>
                     <Form {...form}>
                       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                        <FormField 
-                          control={form.control} 
-                          name="username" 
+                        <FormField
+                          control={form.control}
+                          name="username"
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Username (Optional)</FormLabel>
@@ -316,13 +386,12 @@ const AdminUsers = () => {
                               </FormDescription>
                               <FormMessage />
                             </FormItem>
-                          )} 
+                          )}
                         />
-                        
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <FormField 
-                            control={form.control} 
-                            name="firstName" 
+                          <FormField
+                            control={form.control}
+                            name="firstName"
                             render={({ field }) => (
                               <FormItem>
                                 <FormLabel>First Name</FormLabel>
@@ -331,12 +400,11 @@ const AdminUsers = () => {
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
-                            )} 
+                            )}
                           />
-                          
-                          <FormField 
-                            control={form.control} 
-                            name="lastName" 
+                          <FormField
+                            control={form.control}
+                            name="lastName"
                             render={({ field }) => (
                               <FormItem>
                                 <FormLabel>Last Name</FormLabel>
@@ -345,45 +413,41 @@ const AdminUsers = () => {
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
-                            )} 
+                            )}
                           />
                         </div>
-                        
                         <FormField control={form.control} name="email" render={({
-                        field
-                      }) => <FormItem>
+                          field
+                        }) => <FormItem>
                               <FormLabel>Email</FormLabel>
                               <FormControl>
                                 <Input type="email" placeholder="john@example.com" {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>} />
-                        
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <FormField control={form.control} name="password" render={({
-                          field
-                        }) => <FormItem>
-                                <FormLabel>Password</FormLabel>
-                                <FormControl>
-                                  <Input type="password" placeholder="••••••" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>} />
-                          
+                            field
+                          }) => <FormItem>
+                                  <FormLabel>Password</FormLabel>
+                                  <FormControl>
+                                    <Input type="password" placeholder="••••••" {...field} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>} />
                           <FormField control={form.control} name="confirmPassword" render={({
+                            field
+                          }) => <FormItem>
+                                  <FormLabel>Confirm Password</FormLabel>
+                                  <FormControl>
+                                    <Input type="password" placeholder="••••••" {...field} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>} />
+                        </div>
+                        <FormField control={form.control} name="role" render={({
                           field
                         }) => <FormItem>
-                                <FormLabel>Confirm Password</FormLabel>
-                                <FormControl>
-                                  <Input type="password" placeholder="••••••" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>} />
-                        </div>
-                        
-                        <FormField control={form.control} name="role" render={({
-                        field
-                      }) => <FormItem>
                               <FormLabel>Role</FormLabel>
                               <FormControl>
                                 <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex space-x-4">
@@ -405,10 +469,9 @@ const AdminUsers = () => {
                               </FormControl>
                               <FormMessage />
                             </FormItem>} />
-                        
                         <FormField control={form.control} name="status" render={({
-                        field
-                      }) => <FormItem>
+                          field
+                        }) => <FormItem>
                               <FormLabel>Status</FormLabel>
                               <FormControl>
                                 <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex space-x-4">
@@ -433,15 +496,14 @@ const AdminUsers = () => {
                               </FormDescription>
                               <FormMessage />
                             </FormItem>} />
-                        
                         <Button type="submit" disabled={isSubmitting} className="flex items-center gap-2">
                           {isSubmitting ? <>
-                              <LoadingSpinner size="sm" />
-                              Creating Account...
-                            </> : <>
-                              <UserPlus className="h-4 w-4" />
-                              Create User Account
-                            </>}
+                            <LoadingSpinner size="sm" />
+                            Creating Account...
+                          </> : <>
+                            <UserPlus className="h-4 w-4" />
+                            Create User Account
+                          </>}
                         </Button>
                       </form>
                     </Form>
