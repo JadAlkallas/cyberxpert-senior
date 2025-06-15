@@ -237,29 +237,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     console.log("refreshUsers: Fetching users from API");
     let users: any[] | null = [];
+    try {
+      users = await getAllUsersApi.execute();
+    } catch (e) {
+      console.error("refreshUsers: Error fetching users:", e);
+      users = [];
+    }
+    if (!users) users = [];
+
+    // Normalize ALL user objects FIRST to ensure __sourceRole is present from the API patch
+    const normalizedUsers = users.map(normalizeUser);
+
+    let filteredUsers: typeof normalizedUsers = [];
+
     if (isSuperUser(user)) {
-      // Only fetch admins (not developers)
-      users = await getAllUsersApi.execute();
-      // Only keep the ones where sourceRole/admin detection = "admin"
-      if (users) {
-        users = (users as any[]).filter(u =>
-          u.__sourceRole === "admin" // This will always be set now by normalizeUser!
-        );
-      }
+      // Only keep those marked as admin (normalized!)
+      filteredUsers = normalizedUsers.filter(
+        (u) => (u as any).__sourceRole === "admin"
+      );
     } else if (isAdminUser(user)) {
-      // Only fetch developers (not admins)
-      users = await getAllUsersApi.execute();
-      // Only keep the developers
-      if (users) {
-        users = (users as any[]).filter(u =>
-          u.__sourceRole === "developer" // This will now always exist
-        );
-      }
+      // Only keep those marked as developer (normalized!)
+      filteredUsers = normalizedUsers.filter(
+        (u) => (u as any).__sourceRole === "developer"
+      );
+    } else {
+      // Not admin/superuser: see no one
+      filteredUsers = [];
     }
-    if (users) {
-      const normalizedUsers = users.map(normalizeUser);
-      setAllUsers(normalizedUsers);
-    }
+
+    console.log("refreshUsers: Final filtered users after normalization:", filteredUsers);
+
+    setAllUsers(filteredUsers);
   };
 
   // Login function - Updated to handle suspended accounts better
