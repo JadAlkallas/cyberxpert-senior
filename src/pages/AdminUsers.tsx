@@ -16,6 +16,7 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { useEffect } from "react";
 
 // Updated form schema to remove status field from form input
 const accountSchema = z.object({
@@ -136,10 +137,6 @@ const AdminUsers = () => {
   const isSubmitting = formState.isSubmitting;
 
   // ----- Force role to developer for non-superusers -----
-  // Set to "developer" when user changes to admin (prevents devs from "backdoor" admin creation)
-  // This runs on initial mount and if isSuperUser/isAdminUser changes
-  // Also: disables field if not superuser for full safety
-  import { useEffect } from "react";
   useEffect(() => {
     if (isAdminUser && form.getValues("role") !== "developer") {
       setValue("role", "developer");
