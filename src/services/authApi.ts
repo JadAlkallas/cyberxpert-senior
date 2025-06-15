@@ -111,7 +111,7 @@ export const authApi = {
     });
     
     // Return the avatar URL from the response
-    return response.avatar || response.profile_picture || '';
+    return response.avatar || '';
   },
 
   // Admin: Get all users - combining developers and admins
