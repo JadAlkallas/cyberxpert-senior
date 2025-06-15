@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import Header from "@/components/layout/Header";
 import Sidebar from "@/components/layout/Sidebar";
@@ -72,20 +71,33 @@ const AdminUsers = () => {
   const isSuperUser = !!user?.is_superuser;
   const isAdminUser = !!user?.is_staff && !user.is_superuser;
 
-  // Separate users by role using __sourceRole or fallback to role/is_staff
-  const developerUsers: UserWithSource[] = allUsers.filter(
-    (u) =>
-      (u as any).__sourceRole === "developer" ||
-      u.role === "developer" ||
-      u.is_staff === false
-  ) as UserWithSource[];
+  // ---- Improved Developer Filtering ----
+  // If __sourceRole or role/is_staff isn't present, treat all as developers (default for /developers API).
+  const developerUsers: UserWithSource[] = allUsers.filter((u) => {
+    if ((u as any).__sourceRole) {
+      return (u as any).__sourceRole === "developer";
+    } else if (u.role) {
+      return u.role === "developer";
+    } else if (typeof u.is_staff === "boolean") {
+      return u.is_staff === false;
+    } else {
+      // If there's no role/is_staff/__sourceRole, all users on /developers endpoint are developers by backend intent
+      return true;
+    }
+  }) as UserWithSource[];
 
-  const adminUsers: UserWithSource[] = allUsers.filter(
-    (u) =>
-      (u as any).__sourceRole === "admin" ||
-      u.role === "admin" ||
-      u.is_staff === true
-  ) as UserWithSource[];
+  const adminUsers: UserWithSource[] = allUsers.filter((u) => {
+    if ((u as any).__sourceRole) {
+      return (u as any).__sourceRole === "admin";
+    } else if (u.role) {
+      return u.role === "admin";
+    } else if (typeof u.is_staff === "boolean") {
+      return u.is_staff === true;
+    } else {
+      // If there's no role/is_staff/__sourceRole, these users are not "admin" (since they're on the /developers endpoint)
+      return false;
+    }
+  }) as UserWithSource[];
 
   // Sort each by createdAt (newest first)
   const sortedDevelopers = [...developerUsers].sort((a, b) => {
