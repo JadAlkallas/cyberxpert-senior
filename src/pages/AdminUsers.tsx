@@ -73,8 +73,9 @@ const AdminUsers = () => {
   const isAdminUser = !!user?.is_staff && !user.is_superuser;
 
   // ---- Improved Developer Filtering ----
-  // If __sourceRole or role/is_staff isn't present, treat all as developers (default for /developers API).
+  // Always show developers for admin and superuser; fallback: if __sourceRole missing, treat as developer if role/is_staff is NOT admin
   const developerUsers: UserWithSource[] = allUsers.filter((u) => {
+    // Show only non-admins
     if ((u as any).__sourceRole) {
       return (u as any).__sourceRole === "developer";
     } else if (u.role) {
@@ -82,11 +83,12 @@ const AdminUsers = () => {
     } else if (typeof u.is_staff === "boolean") {
       return u.is_staff === false;
     } else {
-      // If there's no role/is_staff/__sourceRole, all users on /developers endpoint are developers by backend intent
+      // fallback: for admins who only get developers API, display all
       return true;
     }
   }) as UserWithSource[];
 
+  // Admin users: only superuser will get adminList; regular admins see empty admins tab.
   const adminUsers: UserWithSource[] = allUsers.filter((u) => {
     if ((u as any).__sourceRole) {
       return (u as any).__sourceRole === "admin";
@@ -95,7 +97,6 @@ const AdminUsers = () => {
     } else if (typeof u.is_staff === "boolean") {
       return u.is_staff === true;
     } else {
-      // If there's no role/is_staff/__sourceRole, these users are not "admin" (since they're on the /developers endpoint)
       return false;
     }
   }) as UserWithSource[];

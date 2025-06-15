@@ -119,21 +119,39 @@ export const authApi = {
   // Admin: Get all users - combine developers and admins, tag with __sourceRole
   getAllUsers: async (): Promise<DjangoUser[]> => {
     try {
-      // Get both developers and admins
-      const [developers, admins] = await Promise.all([
-        apiRequest<PaginatedResponse<DjangoUser> | DjangoUser[]>('/admin/get/developers'),
-        apiRequest<PaginatedResponse<DjangoUser> | DjangoUser[]>('/admin/get/admins')
-      ]);
-      
-      // Handle both paginated and non-paginated responses, tag
-      const devList = (Array.isArray(developers) ? developers : developers.results).map(dev => ({
-        ...dev,
-        __sourceRole: "developer"
-      }));
-      const adminList = (Array.isArray(admins) ? admins : admins.results).map(admin => ({
-        ...admin,
-        __sourceRole: "admin"
-      }));
+      // Try both in parallel, but catch forbidden error for admins
+      const devPromise = apiRequest<PaginatedResponse<DjangoUser> | DjangoUser[]>('/admin/get/developers');
+      const adminPromise = apiRequest<PaginatedResponse<DjangoUser> | DjangoUser[]>('/admin/get/admins');
+
+      const [developersResult, adminsResultOrErr] = await Promise.allSettled([devPromise, adminPromise]);
+      let devList: DjangoUser[] = [];
+      let adminList: DjangoUser[] = [];
+
+      // Developers: always expected to work for both admin and superuser
+      if (developersResult.status === "fulfilled") {
+        const data = developersResult.value;
+        devList = (Array.isArray(data) ? data : (data as PaginatedResponse<DjangoUser>).results).map(dev => ({
+          ...dev,
+          __sourceRole: "developer",
+        }));
+      }
+
+      // Admins: may fail with forbidden if not superuser
+      if (adminsResultOrErr.status === "fulfilled") {
+        const data = adminsResultOrErr.value;
+        adminList = (Array.isArray(data) ? data : (data as PaginatedResponse<DjangoUser>).results).map(admin => ({
+          ...admin,
+          __sourceRole: "admin",
+        }));
+      } else if (
+        adminsResultOrErr.status === "rejected" &&
+        adminsResultOrErr.reason &&
+        adminsResultOrErr.reason.message &&
+        adminsResultOrErr.reason.message.toString().includes("403")
+      ) {
+        // Forbidden as expected, ignore adminsList
+        adminList = [];
+      }
 
       return [...devList, ...adminList];
     } catch (error) {
