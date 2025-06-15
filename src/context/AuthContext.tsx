@@ -248,26 +248,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Normalize ALL user objects FIRST to ensure __sourceRole is present from the API patch
     const normalizedUsers = users.map(normalizeUser);
 
-    let filteredUsers: typeof normalizedUsers = [];
+    // SET ALL USERS (do not filter - filtering is done in page component)
+    setAllUsers(normalizedUsers);
 
-    if (isSuperUser(user)) {
-      // Only keep those marked as admin (normalized!)
-      filteredUsers = normalizedUsers.filter(
-        (u) => (u as any).__sourceRole === "admin"
-      );
-    } else if (isAdminUser(user)) {
-      // Only keep those marked as developer (normalized!)
-      filteredUsers = normalizedUsers.filter(
-        (u) => (u as any).__sourceRole === "developer"
-      );
-    } else {
-      // Not admin/superuser: see no one
-      filteredUsers = [];
-    }
-
-    console.log("refreshUsers: Final filtered users after normalization:", filteredUsers);
-
-    setAllUsers(filteredUsers);
+    // You may keep logs for debugging
+    console.log("refreshUsers: All normalized users for admin dashboard:", normalizedUsers);
   };
 
   // Login function - Updated to handle suspended accounts better
