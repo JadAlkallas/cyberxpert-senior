@@ -339,11 +339,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return false;
   };
 
-  // New avatar upload function
+  // New avatar upload function - Updated to pass user role
   const uploadAvatar = async (file: File): Promise<string | null> => {
     if (!user) return null;
     
-    const result = await uploadAvatarApi.execute(file);
+    const result = await uploadAvatarApi.execute(file, user.role);
     
     if (result) {
       // Update user profile with new avatar URL

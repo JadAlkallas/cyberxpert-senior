@@ -1,3 +1,4 @@
+
 import { apiRequest } from './api';
 import { User, UserRole, UserStatus } from '@/context/AuthContext';
 import { TokenResponse, DjangoUser, PaginatedResponse } from '@/types/api';
@@ -96,13 +97,15 @@ export const authApi = {
     });
   },
 
-  // Upload avatar - Using profile update endpoint with FormData
-  uploadAvatar: async (file: File): Promise<string> => {
+  // Upload avatar - Uses appropriate endpoint based on user role
+  uploadAvatar: async (file: File, userRole: UserRole): Promise<string> => {
     const formData = new FormData();
     formData.append('avatar', file);
     
-    // Use the profile update endpoint for avatar upload
-    const response = await apiRequest<DjangoUser>('/developer/profile/update', {
+    // Use different endpoints based on user role
+    const endpoint = userRole === 'admin' ? '/admin/profile/update' : '/developer/profile/update';
+    
+    const response = await apiRequest<DjangoUser>(endpoint, {
       method: 'PATCH',
       body: formData,
       headers: {
