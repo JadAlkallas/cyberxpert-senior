@@ -1,4 +1,3 @@
-
 import { apiRequest } from './api';
 import { User, UserRole, UserStatus } from '@/context/AuthContext';
 import { TokenResponse, DjangoUser, PaginatedResponse } from '@/types/api';
@@ -117,7 +116,7 @@ export const authApi = {
     return response.avatar || '';
   },
 
-  // Admin: Get all users - combining developers and admins
+  // Admin: Get all users - combine developers and admins, tag with __sourceRole
   getAllUsers: async (): Promise<DjangoUser[]> => {
     try {
       // Get both developers and admins
@@ -126,10 +125,16 @@ export const authApi = {
         apiRequest<PaginatedResponse<DjangoUser> | DjangoUser[]>('/admin/get/admins')
       ]);
       
-      // Handle both paginated and non-paginated responses
-      const devList = Array.isArray(developers) ? developers : developers.results;
-      const adminList = Array.isArray(admins) ? admins : admins.results;
-      
+      // Handle both paginated and non-paginated responses, tag
+      const devList = (Array.isArray(developers) ? developers : developers.results).map(dev => ({
+        ...dev,
+        __sourceRole: "developer"
+      }));
+      const adminList = (Array.isArray(admins) ? admins : admins.results).map(admin => ({
+        ...admin,
+        __sourceRole: "admin"
+      }));
+
       return [...devList, ...adminList];
     } catch (error) {
       console.error('Error fetching users:', error);

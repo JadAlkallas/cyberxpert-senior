@@ -49,15 +49,16 @@ export const useAuth = () => {
   return context;
 };
 
-// Helper function to normalize Django user data - Robust role detection
+// Helper function to normalize Django user data - robust detection with __sourceRole override
 const normalizeUser = (djangoUser: any): User => {
   console.log("Normalizing Django user:", djangoUser);
 
   let userRole: UserRole = 'developer'; // Default to developer
 
-  // New: Accept "admin" whenever role field is present OR is_staff OR is_superuser
-  // Priority: explicit 'role', then is_staff, then is_superuser (all true values mean admin)
-  if (
+  // Prefer __sourceRole if present (as patched by authApi)
+  if (djangoUser.__sourceRole === "admin" || djangoUser.__sourceRole === "developer") {
+    userRole = djangoUser.__sourceRole;
+  } else if (
     typeof djangoUser.role === 'string' && djangoUser.role.toLowerCase() === 'admin'
   ) {
     userRole = 'admin';
@@ -68,9 +69,10 @@ const normalizeUser = (djangoUser: any): User => {
     userRole = 'admin';
   }
 
-  // Defensive: print all possible fields to debug weird cases
+  // Debug print
   console.log("Detected role for user:", {
     username: djangoUser.username,
+    __sourceRole: djangoUser.__sourceRole,
     role: djangoUser.role,
     is_staff: djangoUser.is_staff,
     is_superuser: djangoUser.is_superuser,
