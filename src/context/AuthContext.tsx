@@ -53,7 +53,7 @@ export const useAuth = () => {
 };
 
 // Helper function to normalize Django user data – robust detection and **resilient avatar/id handling**
-const normalizeUser = (djangoUser: any): User => {
+const normalizeUser = (djangoUser: any): User & { __sourceRole?: string } => {
   console.log("Normalizing Django user:", djangoUser);
 
   let userRole: UserRole = 'developer'; // Default to developer
@@ -111,7 +111,7 @@ const normalizeUser = (djangoUser: any): User => {
   let created = djangoUser.date_joined || djangoUser.createdAt || new Date().toISOString();
 
   // Compose and return normalized user
-  const normalized: User = {
+  const normalized: User & { __sourceRole?: string } = {
     id: normalizedId,
     username: normalizedUsername,
     email: djangoUser.email || "",
@@ -122,7 +122,15 @@ const normalizeUser = (djangoUser: any): User => {
     avatar: avatarUrl,
     createdAt: created,
     date_joined: djangoUser.date_joined,
+    // Add is_staff and is_superuser if present
+    ...(typeof djangoUser.is_staff !== 'undefined' ? { is_staff: djangoUser.is_staff } : {}),
+    ...(typeof djangoUser.is_superuser !== 'undefined' ? { is_superuser: djangoUser.is_superuser } : {})
   };
+
+  // --- KEY: Pass through __sourceRole for robust role filtering ---
+  if (djangoUser.__sourceRole) {
+    (normalized as any).__sourceRole = djangoUser.__sourceRole;
+  }
 
   // Robust debug output
   console.log("normalizeUser: returned object:", normalized);
@@ -221,12 +229,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     console.log("refreshUsers: Starting refresh");
     console.log("refreshUsers: Current user:", user);
     console.log("refreshUsers: Is admin?", isUserAdmin(user?.role || ''));
-    
+
     if (!isUserAdmin(user?.role || '')) {
       console.log("refreshUsers: Not admin, skipping");
       return;
     }
-    
+
     console.log("refreshUsers: Fetching users from API");
     let users: any[] | null = [];
     if (isSuperUser(user)) {
@@ -235,18 +243,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Only keep the ones where sourceRole/admin detection = "admin"
       if (users) {
         users = (users as any[]).filter(u =>
-          (u.__sourceRole === "admin") ||
-          (typeof u.is_staff === "boolean" && u.is_staff)
+          u.__sourceRole === "admin" // This will always be set now by normalizeUser!
         );
       }
     } else if (isAdminUser(user)) {
       // Only fetch developers (not admins)
       users = await getAllUsersApi.execute();
-      // Only keep the ones where sourceRole/admin detection = "developer"
+      // Only keep the developers
       if (users) {
         users = (users as any[]).filter(u =>
-          (u.__sourceRole === "developer") ||
-          !(u.is_staff || u.is_superuser)
+          u.__sourceRole === "developer" // This will now always exist
         );
       }
     }
