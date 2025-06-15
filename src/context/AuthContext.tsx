@@ -49,45 +49,46 @@ export const useAuth = () => {
   return context;
 };
 
-// Helper function to normalize Django user data - Fixed role detection
+// Helper function to normalize Django user data - Robust role detection
 const normalizeUser = (djangoUser: any): User => {
   console.log("Normalizing Django user:", djangoUser);
-  
-  // Better role detection - check multiple possible fields
-  let userRole: UserRole = 'developer'; // Default
-  
-  if (djangoUser.role) {
-    // Direct role field from Django
-    userRole = djangoUser.role.toLowerCase() === 'admin' ? 'admin' : 'developer';
-  } else if (djangoUser.is_staff !== undefined) {
-    // Check is_staff field
-    userRole = djangoUser.is_staff ? 'admin' : 'developer';
-  } else if (djangoUser.is_superuser) {
-    // Check is_superuser field
+
+  let userRole: UserRole = 'developer'; // Default to developer
+
+  // New: Accept "admin" whenever role field is present OR is_staff OR is_superuser
+  // Priority: explicit 'role', then is_staff, then is_superuser (all true values mean admin)
+  if (
+    typeof djangoUser.role === 'string' && djangoUser.role.toLowerCase() === 'admin'
+  ) {
+    userRole = 'admin';
+  } else if (
+    (typeof djangoUser.is_staff === 'boolean' && djangoUser.is_staff) ||
+    (typeof djangoUser.is_superuser === 'boolean' && djangoUser.is_superuser)
+  ) {
     userRole = 'admin';
   }
-  
-  console.log("Detected role:", userRole, "from djangoUser:", {
+
+  // Defensive: print all possible fields to debug weird cases
+  console.log("Detected role for user:", {
+    username: djangoUser.username,
     role: djangoUser.role,
     is_staff: djangoUser.is_staff,
-    is_superuser: djangoUser.is_superuser
+    is_superuser: djangoUser.is_superuser,
+    userRole
   });
-  
-  const normalized = {
+
+  return {
     id: djangoUser.id ? String(djangoUser.id) : "unknown",
     username: djangoUser.username || "unknown",
     email: djangoUser.email || "",
     role: userRole,
-    status: djangoUser.is_active ? 'active' : 'suspended' as UserStatus,
+    status: djangoUser.is_active ? 'active' : 'suspended',
     is_active: djangoUser.is_active !== false,
-    avatarUrl: djangoUser.avatar || djangoUser.profile_picture || djangoUser.avatarUrl,
-    avatar: djangoUser.avatar || djangoUser.profile_picture,
+    avatarUrl: djangoUser.avatar || djangoUser.avatarUrl,
+    avatar: djangoUser.avatar,
     createdAt: djangoUser.date_joined || djangoUser.createdAt || new Date().toISOString(),
     date_joined: djangoUser.date_joined,
   };
-  
-  console.log("Normalized user:", normalized);
-  return normalized;
 };
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
