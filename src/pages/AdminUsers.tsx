@@ -70,6 +70,23 @@ const AdminUsers = () => {
     return userRole?.toLowerCase() === "admin";
   };
 
+  // --- DEBUGGING: log allUsers before display and check role spread ---
+  console.log("AdminUsers: allUsers (RAW for table):", allUsers);
+  console.log(
+    "AdminUsers: role count:",
+    allUsers.reduce(
+      (acc, u) => ({ ...acc, [u.role]: (acc[u.role] || 0) + 1 }),
+      {} as Record<string, number>
+    )
+  );
+
+  // Sort users newest first by createdAt (if present)
+  const sortedUsers = [...allUsers].sort((a, b) => {
+    const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return bTime - aTime;
+  });
+
   // Debug logging
   console.log("AdminUsers: Current user:", user);
   console.log("AdminUsers: User role:", user?.role);
@@ -145,7 +162,7 @@ const AdminUsers = () => {
                     <CardDescription>View and manage all user accounts</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {allUsers.length === 0 ? (
+                    {sortedUsers.length === 0 ? (
                       <div className="text-center py-8 text-gray-500">
                         No user accounts found. Create some accounts using the "Add Account" tab.
                       </div>
@@ -162,7 +179,7 @@ const AdminUsers = () => {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {allUsers.map(user => (
+                          {sortedUsers.map(user => (
                             <TableRow key={user.id}>
                               <TableCell className="font-medium">{user.username}</TableCell>
                               <TableCell>{user.email}</TableCell>
